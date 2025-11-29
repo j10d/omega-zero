@@ -69,7 +69,7 @@ def castling_test_position() -> ChessGame:
 @pytest.fixture
 def en_passant_position() -> ChessGame:
     """Position ready for en passant capture."""
-    fen = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2"
+    fen = "rnbqkbnr/pp2pppp/8/2ppP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1"
     return ChessGame(fen=fen)
 
 
@@ -92,7 +92,8 @@ def test_chess_game_initialization_creates_starting_position(fresh_game: ChessGa
 
 def test_chess_game_initialization_accepts_custom_fen():
     """Test that ChessGame can be initialized with custom FEN string."""
-    custom_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    # Position after c2-c4, allowing black's d4 pawn to capture en passant on c3
+    custom_fen = "rnbqkbnr/pppp1ppp/8/8/2PpP3/8/PP3PPP/RNBQKBNR b KQkq c3 0 1"
     game = ChessGame(fen=custom_fen)
     assert game.get_state() == custom_fen
 
@@ -540,41 +541,42 @@ def test_chess_game_castling_rights_lost_after_rook_moves():
 def test_chess_game_cannot_castle_through_check():
     """Test that castling through check is illegal."""
     # Position where castling would move king through attacked square
-    fen = "r3k2r/8/8/8/8/8/8/R2qK2R w KQkq - 0 1"
+    fen = "3rkr2/8/8/8/8/8/8/R3K2R w KQ - 0 1"
     game = ChessGame(fen=fen)
 
-    # Queenside castle would move king through d1 (attacked by queen)
+    # Queenside and kingside castle would move king through attacked square
     legal_moves = game.get_legal_moves()
     queenside_castle = chess.Move.from_uci("e1c1")
+    kingside_castle = chess.Move.from_uci("e1g1")
     assert queenside_castle not in legal_moves
+    assert kingside_castle not in legal_moves
 
 
 def test_chess_game_cannot_castle_out_of_check():
     """Test that castling out of check is illegal."""
     # King is in check
-    fen = "r3k2r/8/8/8/8/8/8/R3K1Rr w Qkq - 0 1"
+    fen = "4k3/4r3/8/8/8/8/8/R3K2R w KQ - 0 1"
     game = ChessGame(fen=fen)
 
-    # King is in check from h1 rook, cannot castle
+    # King is in check from e7 rook, cannot castle
     legal_moves = game.get_legal_moves()
     kingside_castle = chess.Move.from_uci("e1g1")
+    queenside_castle = chess.Move.from_uci("e1c1")
     assert kingside_castle not in legal_moves
+    assert queenside_castle not in legal_moves
 
 
 def test_chess_game_cannot_castle_into_check():
     """Test that castling into check is illegal."""
     # Castling would put king in check
-    fen = "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1"
-    game = ChessGame(fen=fen)
-
-    # Need to ensure g1 is attacked
-    # Actually, let's use a clearer position
-    fen = "4k3/8/8/8/8/8/8/R3K2r w Q - 0 1"
+    fen = "4k3/2r5/6r1/8/8/8/8/R3K2R w KQ - 0 1"
     game = ChessGame(fen=fen)
 
     legal_moves = game.get_legal_moves()
-    # Queenside castle might still be legal depending on position
-    # This test might need adjustment based on actual implementation
+    kingside_castle = chess.Move.from_uci("e1g1")
+    queenside_castle = chess.Move.from_uci("e1c1")
+    assert kingside_castle not in legal_moves
+    assert queenside_castle not in legal_moves
 
 
 def test_chess_game_en_passant_capture_legal(en_passant_position: ChessGame):
@@ -606,6 +608,7 @@ def test_chess_game_en_passant_opportunity_expires():
     # En passant should no longer be available
     legal_moves = game.get_legal_moves()
     # Can't capture en passant anymore (different position now)
+    assert en_passant not in legal_moves
 
 
 def test_chess_game_pawn_promotion_to_queen(promotion_position: ChessGame):
@@ -665,18 +668,22 @@ def test_chess_game_promotion_encoding_distinguishes_piece_types(promotion_posit
 
 def test_chess_game_king_returns_to_e1_after_castling_no_longer_can_castle():
     """Test edge case: king moves back to e1 after castling rights lost."""
-    game = ChessGame(fen="r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+    # Position with pawns on ranks 2 and 7 to prevent rook interference
+    game = ChessGame(fen="r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
 
-    # Castle kingside
-    game.make_move(chess.Move.from_uci("e1g1"))
-    game.make_move(chess.Move.from_uci("e8g8"))  # Black castles too
+    # Execute move sequence to castle and return king to e1
+    game.make_move(chess.Move.from_uci("e1g1"))  # White castles kingside
+    game.make_move(chess.Move.from_uci("e8g8"))  # Black castles kingside
+    game.make_move(chess.Move.from_uci("f2f3"))  # Open path for white king
+    game.make_move(chess.Move.from_uci("f7f6"))  # Open path for black king
+    game.make_move(chess.Move.from_uci("g1f2"))  # White king to f2
+    game.make_move(chess.Move.from_uci("g8f7"))  # Black king to f7
+    game.make_move(chess.Move.from_uci("f1h1"))  # White rook to h1
+    game.make_move(chess.Move.from_uci("f8h8"))  # Black rook to h8
+    game.make_move(chess.Move.from_uci("f2e1"))  # White king returns to e1
+    game.make_move(chess.Move.from_uci("f7e8"))  # Black king returns to e8
 
-    # Move king back toward e1 via legal moves
-    game.make_move(chess.Move.from_uci("g1f1"))
-    game.make_move(chess.Move.from_uci("g8f8"))
-    game.make_move(chess.Move.from_uci("f1e1"))
-
-    # King is on e1 but castling should not be legal
+    # King is on e1 but castling should not be legal (rights lost after castling)
     legal_moves = game.get_legal_moves()
     assert chess.Move.from_uci("e1g1") not in legal_moves
     assert chess.Move.from_uci("e1c1") not in legal_moves
@@ -702,7 +709,7 @@ def test_chess_game_threefold_repetition_draw():
     game.make_move(chess.Move.from_uci("f6g8"))
 
     # Check if threefold repetition can be claimed
-    # This depends on python-chess implementation
+    assert game.board.can_claim_draw()
 
 
 def test_chess_game_fifty_move_rule():
@@ -720,39 +727,37 @@ def test_chess_game_fifty_move_rule():
         game.make_move(chess.Move.from_uci("g8h8"))
 
     # Should be draw by fifty-move rule
-    # Check if game recognizes this
+    assert game.board.halfmove_clock >= 50
+    assert game.is_draw() or game.board.can_claim_draw()
 
 
 def test_chess_game_discovered_check_position():
     """Test that discovered check is handled correctly."""
     # Position with potential discovered check
-    fen = "rnbqkb1r/pppp1ppp/5n2/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3"
+    fen = "3k4/8/8/8/8/8/3B4/3RK3 w - - 0 1"
     game = ChessGame(fen=fen)
 
-    # Bishop on c4 attacking f7, knight can create discovered check
+    # Moving the bishop on d2 creates a legal, discovered check
     legal_moves = game.get_legal_moves()
 
-    # Verify legal moves are generated correctly
-    assert len(legal_moves) > 0
+    assert chess.Move.from_uci("d2f4") in legal_moves
+    assert chess.Move.from_uci("d2g5") in legal_moves
 
 
 def test_chess_game_pinned_piece_cannot_move():
     """Test that pinned pieces have restricted movement."""
-    # Position where knight on f3 is pinned
-    fen = "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1"
-    game = ChessGame(fen=fen)
-
-    # Add a pin scenario
+    # Position with pinned white knight
     fen = "4k3/8/8/8/4r3/8/4N3/4K3 w - - 0 1"
     game = ChessGame(fen=fen)
 
     # Knight on e2 is pinned by rook on e4
     legal_moves = game.get_legal_moves()
-
-    # Knight should have limited moves (cannot leave e-file)
-    knight_moves = [m for m in legal_moves if m.from_square == chess.E2]
-
-    # Verify pinned piece restrictions
+    assert chess.Move.from_uci("e2g1") not in legal_moves
+    assert chess.Move.from_uci("e2g3") not in legal_moves
+    assert chess.Move.from_uci("e2f4") not in legal_moves
+    assert chess.Move.from_uci("e2d4") not in legal_moves
+    assert chess.Move.from_uci("e2c3") not in legal_moves
+    assert chess.Move.from_uci("e2c1") not in legal_moves
 
 
 def test_chess_game_complex_endgame_position():
