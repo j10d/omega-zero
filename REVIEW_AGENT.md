@@ -460,8 +460,8 @@ See `CLAUDE.md` for current development status and which components are ready fo
 
 **Component Development Order:**
 1. ✅ Game Environment (chess_game.py) - Reviewed
-2. Neural Network (neural_network.py) - Next for implementation
-3. MCTS (mcts.py) - After neural network
+2. ✅ Neural Network (neural_network.py) - Reviewed
+3. MCTS (mcts.py) - Next for implementation
 4. Self-Play Engine (self_play.py) - After MCTS
 5. Training Pipeline (training.py) - After self-play
 6. Evaluation System (evaluation.py) - Final component
