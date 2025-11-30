@@ -237,10 +237,10 @@ class ChessGame:
                 # Convert to array indices where index 0 = rank 8, index 7 = rank 1
                 array_rank = 7 - rank
 
-                # Flip if black to move (flip entire board)
+                # Flip ranks if black to move (so black pieces appear at bottom)
+                # Files do NOT flip - e-file stays e-file from both perspectives
                 if flip:
                     array_rank = 7 - array_rank
-                    file = 7 - file
 
                 # Determine which plane
                 plane_offset = 0 if piece.color == current_color else 6
@@ -248,14 +248,19 @@ class ChessGame:
 
                 board_array[array_rank, file, plane] = 1.0
 
-        # Plane 12: Repetition count (number of times position has occurred)
-        # Normalize by dividing by 3 (threefold repetition is max meaningful)
-        repetition_count = sum(
-            1 for _ in self.board.legal_moves
-        )  # Placeholder - python-chess doesn't expose this easily
-        # Use a simple heuristic: if can claim draw by repetition, set to 1
-        if self.board.can_claim_draw():
-            board_array[:, :, 12] = 1.0
+        # Plane 12: Repetition count (normalized to [1/3, 2/3, 1])
+        # Track how many times this position has occurred (important for draw detection)
+        # 1/3 = first occurrence (no repetition)
+        # 2/3 = second occurrence (repeated once)
+        # 1.0 = third+ occurrence (threefold repetition, can claim draw)
+        if self.board.is_repetition(3):
+            repetition_value = 1.0  # 3+ occurrences
+        elif self.board.is_repetition(2):
+            repetition_value = 2.0 / 3.0  # 2 occurrences
+        else:
+            repetition_value = 1.0 / 3.0  # 1 occurrence (no repetition)
+
+        board_array[:, :, 12] = repetition_value
 
         # Plane 13: En passant square
         if self.board.ep_square is not None:
@@ -265,9 +270,9 @@ class ChessGame:
             # Convert to array indices
             ep_array_rank = 7 - ep_rank
 
+            # Flip rank if black to move, but file stays the same
             if flip:
                 ep_array_rank = 7 - ep_array_rank
-                ep_file = 7 - ep_file
 
             board_array[ep_array_rank, ep_file, 13] = 1.0
 

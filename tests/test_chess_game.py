@@ -441,6 +441,156 @@ def test_chess_game_canonical_board_piece_planes_encode_correctly():
     assert np.sum(board[1, :, 6]) == 8  # 8 black pawns on rank 7
 
 
+def test_chess_game_canonical_board_all_piece_types_encoded_correctly():
+    """Test that all piece types are encoded in correct planes for both colors."""
+    # Standard starting position with all piece types in known locations
+    # White: K on e1, Q on d1, R on a1/h1, B on c1/f1, N on b1/g1, pawns on rank 2
+    # Black: K on e8, Q on d8, R on a8/h8, B on c8/f8, N on b8/g8, pawns on rank 7
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    game = ChessGame(fen=fen)
+    board = game.get_canonical_board()
+
+    # White to move, so white = current player (planes 0-5), black = opponent (planes 6-11)
+    # Plane mapping: 0=Pawn, 1=Knight, 2=Bishop, 3=Rook, 4=Queen, 5=King
+
+    # Verify white pieces (current player, planes 0-5)
+    # Pawns (plane 0): rank 2 = array index 6
+    assert np.sum(board[6, :, 0]) == 8, "White should have 8 pawns on rank 2"
+
+    # Knights (plane 1): b1 and g1
+    # b1 = file 1, rank 1 = array index 7
+    # g1 = file 6, rank 1 = array index 7
+    assert board[7, 1, 1] == 1.0, "White knight should be on b1"
+    assert board[7, 6, 1] == 1.0, "White knight should be on g1"
+    assert np.sum(board[:, :, 1]) == 2, "White should have 2 knights"
+
+    # Bishops (plane 2): c1 and f1
+    # c1 = file 2, rank 1 = array index 7
+    # f1 = file 5, rank 1 = array index 7
+    assert board[7, 2, 2] == 1.0, "White bishop should be on c1"
+    assert board[7, 5, 2] == 1.0, "White bishop should be on f1"
+    assert np.sum(board[:, :, 2]) == 2, "White should have 2 bishops"
+
+    # Rooks (plane 3): a1 and h1
+    # a1 = file 0, rank 1 = array index 7
+    # h1 = file 7, rank 1 = array index 7
+    assert board[7, 0, 3] == 1.0, "White rook should be on a1"
+    assert board[7, 7, 3] == 1.0, "White rook should be on h1"
+    assert np.sum(board[:, :, 3]) == 2, "White should have 2 rooks"
+
+    # Queen (plane 4): d1
+    # d1 = file 3, rank 1 = array index 7
+    assert board[7, 3, 4] == 1.0, "White queen should be on d1"
+    assert np.sum(board[:, :, 4]) == 1, "White should have 1 queen"
+
+    # King (plane 5): e1
+    # e1 = file 4, rank 1 = array index 7
+    assert board[7, 4, 5] == 1.0, "White king should be on e1"
+    assert np.sum(board[:, :, 5]) == 1, "White should have 1 king"
+
+    # Verify black pieces (opponent, planes 6-11)
+    # Pawns (plane 6): rank 7 = array index 1
+    assert np.sum(board[1, :, 6]) == 8, "Black should have 8 pawns on rank 7"
+
+    # Knights (plane 7): b8 and g8
+    # b8 = file 1, rank 8 = array index 0
+    # g8 = file 6, rank 8 = array index 0
+    assert board[0, 1, 7] == 1.0, "Black knight should be on b8"
+    assert board[0, 6, 7] == 1.0, "Black knight should be on g8"
+    assert np.sum(board[:, :, 7]) == 2, "Black should have 2 knights"
+
+    # Bishops (plane 8): c8 and f8
+    # c8 = file 2, rank 8 = array index 0
+    # f8 = file 5, rank 8 = array index 0
+    assert board[0, 2, 8] == 1.0, "Black bishop should be on c8"
+    assert board[0, 5, 8] == 1.0, "Black bishop should be on f8"
+    assert np.sum(board[:, :, 8]) == 2, "Black should have 2 bishops"
+
+    # Rooks (plane 9): a8 and h8
+    # a8 = file 0, rank 8 = array index 0
+    # h8 = file 7, rank 8 = array index 0
+    assert board[0, 0, 9] == 1.0, "Black rook should be on a8"
+    assert board[0, 7, 9] == 1.0, "Black rook should be on h8"
+    assert np.sum(board[:, :, 9]) == 2, "Black should have 2 rooks"
+
+    # Queen (plane 10): d8
+    # d8 = file 3, rank 8 = array index 0
+    assert board[0, 3, 10] == 1.0, "Black queen should be on d8"
+    assert np.sum(board[:, :, 10]) == 1, "Black should have 1 queen"
+
+    # King (plane 11): e8
+    # e8 = file 4, rank 8 = array index 0
+    assert board[0, 4, 11] == 1.0, "Black king should be on e8"
+    assert np.sum(board[:, :, 11]) == 1, "Black should have 1 king"
+
+
+def test_chess_game_canonical_board_real_game_position_after_e4():
+    """Test canonical board representation in a real game after e2-e4."""
+    # Start with standard position, white plays e2-e4
+    # This creates an en passant square and tests black's perspective
+    game = ChessGame()
+    game.make_move(chess.Move.from_uci("e2e4"))
+    # Now black to move
+    board = game.get_canonical_board()
+
+    # Black to move, so black = current player (planes 0-5), white = opponent (planes 6-11)
+    # Only ranks flip, files stay the same (e-file stays e-file)
+
+    # 1) Current player's king (black king on e8) should be at board[7, 4, 5]
+    assert board[7, 4, 5] == 1.0, "Black king should be at [7, 4, 5]"
+
+    # 2) Opponent's king (white king on e1) should be at board[0, 4, 11]
+    assert board[0, 4, 11] == 1.0, "White king should be at [0, 4, 11]"
+
+    # 3) Current player's pawns (black, 8 pawns on rank 7) should be on array index 6
+    assert np.sum(board[6, :, 0]) == 8, "Black should have 8 pawns on rank 6"
+
+    # 4) Opponent's pawns (white, 7 on rank 2, 1 on e4)
+    # White's rank 2 → flipped to array index 1
+    # White's e4 pawn → flipped to array index 3, file 4
+    assert np.sum(board[1, :, 6]) == 7, "White should have 7 pawns on rank 1 (flipped)"
+    assert board[3, 4, 6] == 1.0, "White should have 1 pawn on e4 at [3, 4, 6]"
+    assert np.sum(board[:, :, 6]) == 8, "White should have 8 pawns total"
+
+    # 5) En passant square on e3 (file 4, rank 3)
+    # e3: rank 3 → array index 5 → flipped: 7 - 5 = 2
+    assert board[2, 4, 13] == 1.0, "En passant square should be at [2, 4, 13]"
+    assert np.sum(board[:, :, 13]) == 1, "Should have exactly 1 en passant square"
+
+
+def test_chess_game_canonical_board_repetition_plane_values():
+    """Test that repetition plane (plane 12) correctly tracks position repetitions."""
+    game = ChessGame()
+
+    # Initial position: no repetition (first occurrence)
+    board = game.get_canonical_board()
+    assert np.all(board[:, :, 12] == 1.0 / 3.0), "Initial position should have repetition value 1/3"
+
+    # Make moves that will allow us to repeat the position
+    # Use knight moves to cycle back to the same position
+    game.make_move(chess.Move.from_uci("g1f3"))  # White knight out
+    game.make_move(chess.Move.from_uci("g8f6"))  # Black knight out
+    game.make_move(chess.Move.from_uci("f3g1"))  # White knight back
+    game.make_move(chess.Move.from_uci("f6g8"))  # Black knight back
+
+    # Now we're back to the starting position (second occurrence)
+    board = game.get_canonical_board()
+    assert np.all(board[:, :, 12] == 2.0 / 3.0), "Second occurrence should have repetition value 2/3"
+
+    # Repeat the same sequence again
+    game.make_move(chess.Move.from_uci("g1f3"))
+    game.make_move(chess.Move.from_uci("g8f6"))
+    game.make_move(chess.Move.from_uci("f3g1"))
+    game.make_move(chess.Move.from_uci("f6g8"))
+
+    # Third occurrence (threefold repetition)
+    board = game.get_canonical_board()
+    assert np.all(board[:, :, 12] == 1.0), "Third occurrence should have repetition value 1.0"
+
+    # Verify we can claim draw
+    assert game.board.can_claim_draw(), "Should be able to claim draw after threefold repetition"
+
+
 def test_chess_game_move_encoding_decoding_roundtrip(fresh_game: ChessGame):
     """Test that move encoding/decoding preserves the move."""
     legal_moves = fresh_game.get_legal_moves()
