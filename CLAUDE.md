@@ -46,7 +46,9 @@ reinforcement learning, and Monte Carlo Tree Search (MCTS).
 ## Project Structure
 ```
 alphazero-chess/
-├── claude.md                    # This file
+├── CLAUDE.md                    # This file
+├── IMPLEMENTATION_AGENT.md      # Implementation Agent instructions
+├── REVIEW_AGENT.md              # Review Agent instructions
 ├── README.md                    # Project overview and setup
 ├── requirements.txt             # Python dependencies
 ├── src/
@@ -99,6 +101,24 @@ pytest -v
 pytest --cov=src
 ```
 
+## Current Status
+
+**Phase:** Component 2 - Neural Network Architecture
+**Status:** Planning complete, ready for test development
+**Next:** Implementation Agent to write tests and implementation
+
+**Completed Components:**
+1. ✅ Game Environment & Rules Engine (chess_game.py)
+
+**In Progress:**
+2. 🔄 Neural Network Architecture (neural_network.py)
+
+**Upcoming:**
+3. ⏳ MCTS (mcts.py)
+4. ⏳ Self-Play Engine (self_play.py)
+5. ⏳ Training Pipeline (training.py)
+6. ⏳ Evaluation System (evaluation.py)
+
 ## Development Approach
 
 ### Test-Driven Development (TDD)
@@ -108,14 +128,24 @@ pytest --cov=src
 3. **Refactor** while keeping tests green
 4. **Iterate** component by component
 
-### Component Development Order
+### Three-Agent Development Workflow
 
-1. ✅ **Game Environment** - Foundation (in progress)
-2. **Neural Network** - Can develop independently
-3. **MCTS** - Requires game environment + neural network
-4. **Self-Play Engine** - Integrates MCTS with game environment
-5. **Training Pipeline** - Consumes self-play data
-6. **Evaluation System** - Validates improvements
+**Architecture Agent (Planning):**
+- Designs component architecture and specifications
+- Makes high-level design decisions
+- Provides detailed prompts for Implementation Agent
+
+**Implementation Agent (Building):**
+- Writes comprehensive tests FIRST (TDD)
+- Implements components to pass tests
+- Follows IMPLEMENTATION_AGENT.md guidelines
+
+**Review Agent (Quality Assurance):**
+- Reviews test coverage and completeness
+- Checks for test overfitting
+- Finds bugs and edge cases
+- Suggests and implements improvements
+- Follows REVIEW_AGENT.md guidelines
 
 ## Coding Standards
 
@@ -150,20 +180,6 @@ from typing import List, Optional, Tuple  # Don't import these
 def old_style(self) -> Optional[List[chess.Move]]:  # Don't use
     pass
 ```
-
-### Neural Network Conventions
-
-- **Input shape:** `(batch_size, 8, 8, 14)` - board planes
-- **Policy output:** `(batch_size, 4672)` - move probabilities
-- **Value output:** `(batch_size, 1)` - position evaluation [-1, 1]
-- **Always use float32** for tensors
-
-### MCTS Conventions
-
-- **Visit counts:** Track as integers
-- **Action values Q:** Track as floats in [-1, 1]
-- **Prior probabilities P:** From policy head, in [0, 1]
-- **PUCT constant:** Tunable hyperparameter (typically ~1.0)
 
 ## Key Design Decisions
 
@@ -201,6 +217,148 @@ def old_style(self) -> Optional[List[chess.Move]]:  # Don't use
 **Canonical form:** Always flip board if black to move
 - Reduces what network needs to learn
 - "My pieces vs opponent's pieces" not "white vs black"
+
+## Neural Network Architecture Details
+
+**Architecture Type:** AlphaZero-style with residual blocks
+
+**Network Structure:**
+```
+Input: (batch_size, 8, 8, 14)
+    ↓
+Initial Conv Block
+    Conv2D: 128 filters, 3×3, padding='same'
+    BatchNorm + ReLU
+    ↓
+Residual Tower (10 blocks)
+    Each block:
+    - Conv2D: 128 filters, 3×3, padding='same', use_bias=False
+    - BatchNorm + ReLU
+    - Conv2D: 128 filters, 3×3, padding='same', use_bias=False
+    - BatchNorm
+    - Add (skip connection)
+    - ReLU
+    ↓
+    ┌──────────────┴──────────────┐
+    ↓                             ↓
+Policy Head                  Value Head
+Conv2D: 2 filters, 1×1       Conv2D: 1 filter, 1×1
+BatchNorm + ReLU             BatchNorm + ReLU
+Flatten                      Flatten
+Dense: 4672                  Dense: 256 + ReLU
+Softmax                      Dense: 1 + Tanh
+    ↓                             ↓
+(batch, 4672)                (batch, 1)
+```
+
+**Model Configuration:**
+- **Residual blocks:** 10 (scalable: 5 for debugging, 15-20 for stronger play)
+- **Filters per layer:** 128 (scalable: 64 for faster training, 256 for stronger play)
+- **Total parameters:** ~3.6M (manageable on M1 MacBook Air)
+- **Batch normalization:** Yes, throughout (critical for deep networks)
+- **Skip connections:** Yes, in residual blocks (enables deep learning)
+
+**Why Residual Blocks:**
+- Enable training deep networks (10+ layers) without gradient vanishing
+- Critical innovation that makes AlphaZero architecture work
+- Allows network to learn complex chess patterns
+- Skip connections provide gradient highways during backpropagation
+
+**Input/Output Specifications:**
+- **Input shape:** `(batch_size, 8, 8, 14)` - board planes from ChessGame
+- **Policy output:** `(batch_size, 4672)` - move probabilities, softmax activation
+- **Value output:** `(batch_size, 1)` - position evaluation in [-1, 1], tanh activation
+- **Data type:** float32 throughout (required for M1 GPU efficiency)
+
+**Batch Normalization:**
+- Used after every convolution (before activation)
+- use_bias=False in Conv layers (BatchNorm makes bias redundant)
+- Critical for training stability in deep networks
+- **Training mode:** `model(x, training=True)` updates statistics
+- **Inference mode:** `model(x, training=False)` uses frozen statistics
+
+### MCTS Conventions
+
+- **Visit counts:** Track as integers
+- **Action values Q:** Track as floats in [-1, 1]
+- **Prior probabilities P:** From policy head, in [0, 1]
+- **PUCT constant:** Tunable hyperparameter (typically ~1.0)
+
+## Training Strategy: Hybrid Approach
+
+**Philosophy:** Combine supervised learning and self-play for practical training on M1 hardware.
+
+### Phase 1: Supervised Pre-training (Recommended First Step)
+
+**Data Source:** Grandmaster game databases
+- Lichess Elite Database: https://database.lichess.org/
+- 3+ million games from players rated 2200+
+- ~100 million positions for training
+- Free download, PGN format
+
+**Training Procedure:**
+1. Parse PGN files to extract positions
+2. For each position:
+   - Input: canonical board tensor (8, 8, 14)
+   - Policy target: one-hot encoding of GM's move
+   - Value target: game outcome (+1, 0, -1)
+3. Train network on GM data (10-20 epochs)
+4. Expected result: ~1500-1700 ELO in 1-2 days
+
+**Benefits:**
+- Fast bootstrap (hours vs. weeks)
+- Learns proven opening theory
+- Learns positional concepts from strong play
+- Provides strong baseline for self-play
+
+### Phase 2: Self-Play Refinement
+
+**After pre-training, switch to AlphaZero self-play:**
+1. Generate games using current network + MCTS
+2. Train on self-play data (positions, MCTS policies, outcomes)
+3. Network improves beyond human training data
+4. Can discover novel strategies
+
+**Advantages over pure self-play:**
+- Start from competent baseline (~1600 ELO)
+- Higher quality self-play games
+- Faster convergence to strong play
+- More efficient use of M1 compute resources
+
+**This is what Leela Chess Zero does** - it's a proven, practical approach.
+
+### Expected Performance Timeline (M1 MacBook Air)
+
+**Supervised Pre-training:**
+- Day 1-2: Process 100M GM positions
+- Day 2-3: Train network on GM data
+- Result: ~1500-1700 ELO baseline
+
+**Self-Play Phase 1 (Week 1-2):**
+- Generate: ~10,000 self-play games
+- Result: ~1700-1900 ELO
+
+**Self-Play Phase 2 (Week 3-8):**
+- Generate: ~50,000-100,000 games
+- Result: ~1900-2100 ELO
+
+**Long-term (3+ months):**
+- Plateau around 1800-2000 ELO on M1 alone
+- Higher ELO requires more compute (cloud GPUs)
+
+### Why Not Pure AlphaZero Self-Play?
+
+**Pure self-play challenges:**
+- Millions of terrible games before learning basics
+- Reinvents basic chess knowledge from scratch
+- Requires massive compute ($25M+ for original AlphaZero)
+- Not practical for M1 MacBook Air
+
+**Hybrid approach advantages:**
+- Practical for limited compute
+- Achieves same end goal (strong chess engine)
+- More educational (learn both supervised and RL)
+- Faster time to playable strength
 
 ## Testing Strategy
 
@@ -251,7 +409,7 @@ pytest>=7.4.0
 ### Error Handling
 ```python
 # Always validate inputs
-def make_move(self, move: chess.Move) -> None:
+def make_move(self, move: chess.Move) -> None::
     if move not in self.board.legal_moves:
         raise ValueError(f"Illegal move: {move.uci()}")
     self.board.push(move)
@@ -295,11 +453,21 @@ def select_child(self, game: ChessGame) -> tuple[ChessGame, chess.Move]:
 - Expect modest speedups vs CPU (not CUDA-level)
 - Monitor memory usage (M1 Air has thermal constraints)
 
-## Current Status
+## Training Data and Databases
 
-**Phase:** Component 1 - Game Environment & Rules Engine
-**Status:** Writing comprehensive tests (TDD)
-**Next:** Implement ChessGame class to pass tests
+**Grandmaster Games:**
+- Lichess Elite Database: https://database.lichess.org/
+- FICS Games Database
+- Chess.com games (with account)
+
+**PGN Parsing:**
+- Use python-chess library: `chess.pgn.read_game()`
+- Extract positions, moves, and outcomes
+- Convert to training format (tensors + targets)
+
+**Data Augmentation:**
+- Horizontal flip for symmetry (optional, chess is mostly symmetric)
+- Mix GM data with self-play data during transition phase
 
 ## Future Considerations
 
@@ -307,18 +475,39 @@ def select_child(self, game: ChessGame) -> tuple[ChessGame, chess.Move]:
 - **Scaling:** If training too slow, consider smaller network or fewer simulations
 - **Evaluation:** Track ELO ratings to measure improvement
 - **Visualization:** TensorBoard for training metrics
+- **Cloud Training:** Rent GPU for intensive training periods if needed
 
-## Questions for AI Assistant
+## Questions for Architecture Agent
 
-When asking for help with this project:
-1. Always specify which component you're working on
-2. Mention if it's test code or implementation
-3. Reference the TDD workflow (tests first, then implementation)
-4. Note any M1-specific constraints
-5. Indicate if you want simplified vs. full AlphaZero approach
+When asking for architectural guidance:
+1. Specify which component you're planning
+2. Ask about design decisions and tradeoffs
+3. Request component specifications and interfaces
+4. Discuss integration between components
+5. Get recommendations on implementation approaches
+
+## Questions for Implementation Agent
+
+When implementing a component:
+1. Reference IMPLEMENTATION_AGENT.md for TDD workflow
+2. Write comprehensive tests FIRST
+3. Implement to pass tests
+4. Follow all coding standards in CLAUDE.md
+5. Use proper Python 3.10+ type hints
+
+## Questions for Review Agent
+
+When reviewing code:
+1. Reference REVIEW_AGENT.md for review process
+2. Check for test coverage gaps
+3. Look for overfitting to tests
+4. Find bugs and edge cases
+5. Suggest improvements to tests and implementation
 
 ## References
 
 - AlphaZero paper: https://arxiv.org/abs/1712.01815
+- Leela Chess Zero: https://lczero.org/
 - python-chess docs: https://python-chess.readthedocs.io/
 - TensorFlow Metal: https://developer.apple.com/metal/tensorflow-plugin/
+- Lichess Database: https://database.lichess.org/
