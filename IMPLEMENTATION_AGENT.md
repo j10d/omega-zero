@@ -716,9 +716,9 @@ The Review Agent will review your work. Your job is to make correct, working imp
 See `CLAUDE.md` for current development status.
 
 **Component Development Order:**
-1. ✅ Game Environment (chess_game.py) - Complete, ready for review
-2. 🔄 Neural Network (neural_network.py) - Next to implement
-3. ⏳ MCTS (mcts.py) - After neural network
+1. ✅ Game Environment (chess_game.py) - Complete, reviewed
+2. ✅ Neural Network (neural_network.py) - Complete, reviewed and improved
+3. 🔄 MCTS (mcts.py) - Next to implement
 4. ⏳ Self-Play Engine (self_play.py) - After MCTS
 5. ⏳ Training Pipeline (training.py) - After self-play
 6. ⏳ Evaluation System (evaluation.py) - Final component
