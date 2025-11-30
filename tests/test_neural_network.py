@@ -169,6 +169,28 @@ def test_neural_network_model_is_keras_model(built_model):
     assert isinstance(built_model.model, tf.keras.Model)
 
 
+def test_neural_network_model_is_compiled(built_model):
+    """Test that model is compiled with optimizer and loss functions."""
+    # Check optimizer exists
+    assert built_model.model.optimizer is not None
+    assert isinstance(built_model.model.optimizer, tf.keras.optimizers.Optimizer)
+
+
+def test_neural_network_optimizer_uses_correct_learning_rate(chess_nn):
+    """Test that optimizer is configured with specified learning rate."""
+    custom_lr = 0.01
+    nn = ChessNN(learning_rate=custom_lr)
+    nn.build_model()
+    # Check that optimizer has the correct learning rate
+    assert nn.model.optimizer.learning_rate.numpy() == custom_lr
+
+
+def test_neural_network_has_loss_functions(built_model):
+    """Test that model has loss functions configured for both outputs."""
+    # Model should have loss functions for policy and value
+    assert built_model.model.loss is not None
+
+
 # =============================================================================
 # B. FORWARD PASS TESTS
 # =============================================================================
@@ -478,6 +500,45 @@ def test_neural_network_batch_normalization_affects_training_mode(built_small_mo
     assert policy_train.shape == policy_infer.shape
 
 
+def test_neural_network_can_train_with_fit(built_small_model, sample_board):
+    """Test that model can be trained using model.fit()."""
+    # Prepare data
+    board_batch = np.expand_dims(sample_board, axis=0)
+    policy_target = np.zeros((1, 4672), dtype=np.float32)
+    policy_target[0, 0] = 1.0  # One-hot encoding
+    value_target = np.array([[0.5]], dtype=np.float32)
+
+    # Train for 1 epoch - should not raise error
+    history = built_small_model.model.fit(
+        board_batch,
+        {'policy': policy_target, 'value': value_target},
+        epochs=1,
+        verbose=0
+    )
+
+    # Verify training occurred
+    assert 'loss' in history.history
+    assert len(history.history['loss']) == 1
+
+
+def test_neural_network_can_train_with_train_on_batch(built_small_model, sample_board):
+    """Test that model can be trained using train_on_batch()."""
+    # Prepare data
+    board_batch = np.expand_dims(sample_board, axis=0)
+    policy_target = np.zeros((1, 4672), dtype=np.float32)
+    policy_target[0, 0] = 1.0
+    value_target = np.array([[0.5]], dtype=np.float32)
+
+    # Train on batch - should return loss
+    loss = built_small_model.model.train_on_batch(
+        board_batch,
+        {'policy': policy_target, 'value': value_target}
+    )
+
+    # Loss should be a scalar or list
+    assert isinstance(loss, (float, list, np.ndarray))
+
+
 # =============================================================================
 # G. EDGE CASE TESTS
 # =============================================================================
@@ -569,3 +630,31 @@ def test_neural_network_variable_residual_blocks():
 
     # More blocks should mean more parameters
     assert params_5 > params_3
+
+
+def test_neural_network_rejects_invalid_input_shape_wrong_channels(built_small_model):
+    """Test that predict rejects input with wrong number of channels."""
+    invalid_board = np.zeros((8, 8, 12), dtype=np.float32)  # Wrong: 12 instead of 14
+    with pytest.raises(ValueError, match="Invalid board shape"):
+        built_small_model.predict(invalid_board)
+
+
+def test_neural_network_rejects_invalid_input_shape_wrong_dimensions(built_small_model):
+    """Test that predict rejects input with wrong spatial dimensions."""
+    invalid_board = np.zeros((6, 6, 14), dtype=np.float32)  # Wrong: 6x6 instead of 8x8
+    with pytest.raises(ValueError, match="Invalid board shape"):
+        built_small_model.predict(invalid_board)
+
+
+def test_neural_network_rejects_invalid_batch_shape(built_small_model):
+    """Test that predict rejects batch with invalid board shape."""
+    invalid_batch = np.zeros((2, 8, 8, 12), dtype=np.float32)  # Wrong: 12 channels
+    with pytest.raises(ValueError, match="Invalid board shape"):
+        built_small_model.predict(invalid_batch)
+
+
+def test_neural_network_rejects_wrong_number_of_dimensions(built_small_model):
+    """Test that predict rejects input with wrong number of dimensions."""
+    invalid_input = np.zeros((8, 8), dtype=np.float32)  # Wrong: 2D instead of 3D/4D
+    with pytest.raises(ValueError, match="Invalid number of dimensions"):
+        built_small_model.predict(invalid_input)

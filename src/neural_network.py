@@ -85,6 +85,19 @@ class ChessNN:
             name='chess_nn'
         )
 
+        # Compile model with optimizer and loss functions
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+            loss={
+                'policy': 'categorical_crossentropy',
+                'value': 'mean_squared_error'
+            },
+            metrics={
+                'policy': ['accuracy'],
+                'value': ['mae']
+            }
+        )
+
         self.model = model
         return model
 
@@ -107,17 +120,32 @@ class ChessNN:
             value: Position evaluation in [-1, 1]. Scalar or shape (N, 1).
 
         Raises:
-            ValueError: If model not built.
+            ValueError: If model not built or input has invalid shape.
         """
         if self.model is None:
             raise ValueError("Model not built. Call build_model() first.")
 
-        # Detect single input
+        # Validate input shape
         if board_tensor.ndim == 3:
+            if board_tensor.shape != (8, 8, 14):
+                raise ValueError(
+                    f"Invalid board shape: {board_tensor.shape}. "
+                    f"Expected (8, 8, 14)."
+                )
             board_tensor = np.expand_dims(board_tensor, axis=0)
             single_input = True
-        else:
+        elif board_tensor.ndim == 4:
+            if board_tensor.shape[1:] != (8, 8, 14):
+                raise ValueError(
+                    f"Invalid board shape: {board_tensor.shape}. "
+                    f"Expected (batch_size, 8, 8, 14)."
+                )
             single_input = False
+        else:
+            raise ValueError(
+                f"Invalid number of dimensions: {board_tensor.ndim}. "
+                f"Expected 3 (single board) or 4 (batch)."
+            )
 
         # Ensure float32
         board_tensor = board_tensor.astype(np.float32)
