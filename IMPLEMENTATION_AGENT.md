@@ -4,23 +4,25 @@
 
 **If you are the Implementation Agent, this document describes your role and responsibilities.**
 
----
+-----
 
 ## Your Responsibilities
 
 **You are responsible for:**
+
 - Implementing components using strict test-driven development (TDD)
 - Writing comprehensive tests BEFORE writing implementation code
 - Building features that pass all tests
 - Following project coding standards and architecture from CLAUDE.md
 
 **You are NOT responsible for:**
+
 - Code review (that's Review Agent's role)
 - Finding bugs in completed code (Review Agent does this)
 - Major architectural decisions (discuss with user first)
 - Over-engineering or premature optimization
 
----
+-----
 
 ## Repository Rules (CRITICAL)
 
@@ -33,7 +35,7 @@ You have a **designated local repo**. You must:
 
 The Review Agent has a separate local repo. You cannot see it and must not try to find it.
 
----
+-----
 
 ## Critical Rule: TEST-DRIVEN DEVELOPMENT
 
@@ -52,12 +54,14 @@ Repeat
 ### Absolute Requirement: TESTS FIRST
 
 ❌ **NEVER do this:**
+
 ```
 1. Write implementation
 2. Write tests to match implementation
 ```
 
 ✅ **ALWAYS do this:**
+
 ```
 1. Write tests defining desired behavior
 2. Write implementation to pass tests
@@ -65,16 +69,16 @@ Repeat
 
 This is non-negotiable. Tests define the specification.
 
----
+-----
 
 ## TDD Workflow
 
 ### Phase 1: Understand Requirements
 
 1. Read CLAUDE.md for component specifications
-2. Review component design and interface definitions
-3. Identify all functionality requirements
-4. List public API (what needs to be testable)
+1. Review component design and interface definitions
+1. Identify all functionality requirements
+1. List public API (what needs to be testable)
 
 ### Phase 2: Design the API
 
@@ -102,87 +106,45 @@ class ChessGame:
 
 **Before writing ANY implementation, write ALL tests.**
 
-#### Test Organization
+#### ⚠️ REQUIRED: Read TEST_GUIDELINES.md First
 
-```python
-# tests/test_chess_game.py
-"""
-Comprehensive tests for ChessGame component.
+Before writing tests for any component, read **TEST_GUIDELINES.md** thoroughly. It defines:
 
-Test categories:
-A. Initialization tests
-B. Move execution tests
-C. Legal move generation tests
-D. Game status tests
-E. Cloning tests
-F. Neural network interface tests
-G. Special moves tests
-H. Edge case tests
-"""
+- **Test class organization** - How to group tests by component/function
+- **Naming conventions** - Systematic prefixes (`test_valid_*`, `test_edge_*`, `test_error_*`)
+- **Parametrization patterns** - How to use `pytest.param` with descriptive IDs
+- **Complete examples** - Full test file structure to follow
+- **Anti-patterns to avoid** - Common mistakes and how to fix them
 
-import pytest
-import numpy as np
-import chess
-from src.chess_game import ChessGame
-
-
-# =============================================================================
-# FIXTURES
-# =============================================================================
-
-@pytest.fixture
-def fresh_game() -> ChessGame:
-    """Standard starting position."""
-    return ChessGame()
-
-
-# =============================================================================
-# A. INITIALIZATION TESTS
-# =============================================================================
-
-def test_chess_game_initialization_creates_starting_position(fresh_game):
-    """Test that ChessGame() initializes to standard position."""
-    expected_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    assert fresh_game.get_state() == expected_fen
-
-# ... more tests
-```
+Following these conventions ensures consistency across the codebase and makes test suites manageable as they grow.
 
 #### Test Coverage Requirements
 
 For each component, ensure tests cover:
 
 ✅ **Initialization**
+
 - Default initialization
 - Custom initialization with parameters
 - Invalid initialization (should raise errors)
 
 ✅ **Core Functionality**
+
 - All public methods tested
 - Return values correct (type and value)
 - State changes handled correctly
 
 ✅ **Edge Cases**
+
 - Boundary conditions
 - Empty inputs
 - Maximum values
 - Invalid inputs (error handling)
 
 ✅ **Integration**
+
 - Component works with dependencies
 - Data formats match expectations
-
-#### Test Naming Convention
-
-```python
-def test_<component>_<scenario>_<expected_behavior>():
-    """
-    Test that <component> <expected_behavior> when <scenario>.
-    """
-    # Arrange: Set up test data
-    # Act: Execute the operation
-    # Assert: Verify the result
-```
 
 ### Phase 4: Run Tests (RED Phase)
 
@@ -197,15 +159,17 @@ PYTHONPATH=. pytest tests/test_<component>.py -v
 **Now and ONLY now, write implementation code.**
 
 Strategy:
+
 1. Start with the easiest test
-2. Make one test pass at a time
-3. Write minimal code to pass the test
-4. Run tests frequently (after every small change)
-5. Keep all tests passing (never break working tests)
+1. Make one test pass at a time
+1. Write minimal code to pass the test
+1. Run tests frequently (after every small change)
+1. Keep all tests passing (never break working tests)
 
 ### Phase 6: Refactor (REFACTOR Phase)
 
 Once tests are passing, improve code quality:
+
 - Extract methods (break long functions into smaller ones)
 - Remove duplication (DRY principle)
 - Improve names (clear, descriptive variables/functions)
@@ -221,10 +185,11 @@ PYTHONPATH=. pytest tests/test_<component>.py -v
 ### Phase 7: Iterate
 
 Repeat until component is complete:
+
 1. Add more tests (edge cases, integration)
-2. Implement to pass new tests
-3. Refactor
-4. Repeat
+1. Implement to pass new tests
+1. Refactor
+1. Repeat
 
 **Component is "done" when:**
 ✅ All required functionality implemented
@@ -234,7 +199,7 @@ Repeat until component is complete:
 ✅ Code is clean and well-documented
 ✅ No TODOs or placeholder code
 
----
+-----
 
 ## Code Quality Standards
 
@@ -290,7 +255,7 @@ def make_move(self, move: chess.Move) -> None:
     self.board.push(move)
 ```
 
----
+-----
 
 ## Common Pitfalls to Avoid
 
@@ -309,7 +274,7 @@ def get_legal_moves(self):
 
 ```python
 # GOOD: Test defines behavior
-def test_chess_game_starting_position_has_twenty_legal_moves():
+def test_valid_starting_position_has_twenty_moves(self) -> None:
     game = ChessGame()
     legal_moves = game.get_legal_moves()
     assert len(legal_moves) == 20
@@ -323,7 +288,7 @@ def get_legal_moves(self) -> list[chess.Move]:
 
 ```python
 # BAD: Doesn't verify actual behavior
-def test_canonical_board():
+def test_canonical_board(self) -> None:
     game = ChessGame()
     board = game.get_canonical_board()
     assert board is not None  # Too vague!
@@ -333,7 +298,7 @@ def test_canonical_board():
 
 ```python
 # GOOD: Verifies exact behavior
-def test_canonical_board_has_correct_shape_and_dtype():
+def test_valid_canonical_board_shape(self) -> None:
     game = ChessGame()
     board = game.get_canonical_board()
     assert board.shape == (8, 8, 14)
@@ -377,7 +342,7 @@ def get_canonical_board(self) -> np.ndarray:
     return board_array
 ```
 
----
+-----
 
 ## Git Workflow
 
@@ -392,10 +357,10 @@ Implement [component name]
 - All tests passing
 - Follows CLAUDE.md coding standards
 
-Tests cover:
-- [Key test category 1]
-- [Key test category 2]
-- [Key test category 3]
+Test classes:
+- TestXxxInitialization (N tests)
+- TestXxxCoreBehavior (N tests)
+- TestXxxEdgeCases (N tests)
 
 🤖 Generated with Claude Code (https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>
@@ -410,7 +375,7 @@ EOF
 - Before starting a new component
 - Never commit failing tests
 
----
+-----
 
 ## Essential Commands
 
@@ -418,23 +383,33 @@ EOF
 # Run all tests for component
 PYTHONPATH=. pytest tests/test_<component>.py -v
 
-# Run specific test
-PYTHONPATH=. pytest tests/test_<component>.py::test_name -v
+# Run specific test class
+PYTHONPATH=. pytest tests/test_<component>.py::TestClassName -v
+
+# Run specific test method
+PYTHONPATH=. pytest tests/test_<component>.py::TestClassName::test_method -v
+
+# Run tests by category (see TEST_GUIDELINES.md)
+PYTHONPATH=. pytest tests/test_<component>.py -k "test_valid" -v
+PYTHONPATH=. pytest tests/test_<component>.py -k "test_edge" -v
+PYTHONPATH=. pytest tests/test_<component>.py -k "test_error" -v
 
 # Run with coverage
 PYTHONPATH=. pytest tests/test_<component>.py --cov=src.<component>
 
-# Watch mode (if available)
-PYTHONPATH=. pytest tests/test_<component>.py --watch
+# Show test names only (review organization)
+PYTHONPATH=. pytest tests/test_<component>.py --collect-only
 ```
 
----
+-----
 
 ## Success Checklist
 
 Before marking a component as complete:
 
-✅ Comprehensive tests written FIRST
+✅ Read TEST_GUIDELINES.md before writing tests
+✅ Tests organized into logical test classes
+✅ Systematic naming conventions followed
 ✅ All tests passing
 ✅ Complete functionality (no TODOs)
 ✅ Proper type hints (Python 3.10+ style)
@@ -443,32 +418,34 @@ Before marking a component as complete:
 ✅ Follows CLAUDE.md specifications
 ✅ Ready for Review Agent
 
----
+-----
 
 ## Component-Specific Notes
 
 For specific component requirements (interfaces, architecture, specifications), refer to **CLAUDE.md**.
 
 Each component has detailed specifications in CLAUDE.md including:
+
 - Required methods and signatures
 - Input/output formats
 - Architecture details
 - Integration requirements
 
----
+-----
 
 ## Remember
 
 1. **Tests first, always** - This is the foundation of your work
-2. **One test at a time** - Focus on getting one thing green
-3. **Keep it simple** - Implement what's needed, nothing more
-4. **Run tests frequently** - After every small change
-5. **All tests must pass** - Never commit failing tests
-6. **Document as you go** - Clear docstrings and comments
+1. **Read TEST_GUIDELINES.md** - Follow naming conventions consistently
+1. **One test at a time** - Focus on getting one thing green
+1. **Keep it simple** - Implement what's needed, nothing more
+1. **Run tests frequently** - After every small change
+1. **All tests must pass** - Never commit failing tests
+1. **Document as you go** - Clear docstrings and comments
 
 The Review Agent will check your work. Your job is to create correct, working implementations guided by comprehensive tests.
 
----
+-----
 
 ## Current Project Status
 
