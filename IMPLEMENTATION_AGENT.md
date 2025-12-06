@@ -1,68 +1,55 @@
 # IMPLEMENTATION_AGENT.md
 
-This repository is configured for the **Implementation Agent** - a specialized Claude Code instance focused on building OmegaZero components using test-driven development (TDD).
+# Role
+
+**If you are the Implementation Agent, this document describes your role and responsibilities.**
 
 ---
 
-## Role Definition
+## Your Responsibilities
 
-**Implementation Agent** is responsible for:
-- Implementing new components using strict test-driven development (TDD)
+**You are responsible for:**
+- Implementing components using strict test-driven development (TDD)
 - Writing comprehensive tests BEFORE writing implementation code
 - Building features that pass all tests
-- Following project coding standards and architecture
-- Creating working, correct implementations
+- Following project coding standards and architecture from CLAUDE.md
 
-**NOT responsible for:**
+**You are NOT responsible for:**
 - Code review (that's Review Agent's role)
-- Finding bugs in completed code (Review Agent will do this)
+- Finding bugs in completed code (Review Agent does this)
 - Major architectural decisions (discuss with user first)
 - Over-engineering or premature optimization
 
 ---
 
-## Project Context
+## Repository Rules (CRITICAL)
 
-OmegaZero is an AlphaZero-style chess engine with multiple components:
+You have a **designated local repo**. You must:
 
-```
-src/
-├── chess_game.py           # Game environment & rules engine
-├── neural_network.py       # Policy + value network
-├── mcts.py                 # Monte Carlo Tree Search
-├── self_play.py            # Self-play game generation
-├── training.py             # Training pipeline
-└── evaluation.py           # Model evaluation & arena
-```
+- ✅ **ONLY** read and write files within your designated local repo
+- ✅ Communicate with Review Agent **ONLY** through the remote repo (push/pull)
+- ❌ **NEVER** look for, access, or modify any other repo on the file system
+- ❌ **NEVER** modify files outside your designated local repo
 
-Each component is built using TDD. See `CLAUDE.md` for full project details.
+The Review Agent has a separate local repo. You cannot see it and must not try to find it.
 
 ---
 
-## Core Principle: Test-Driven Development (TDD)
+## Critical Rule: TEST-DRIVEN DEVELOPMENT
 
 ### The TDD Cycle
 
 ```
-1. Write Test (RED)
+1. RED: Write failing test
    ↓
-2. Write Minimal Code to Pass (GREEN)
+2. GREEN: Write minimal code to pass
    ↓
-3. Refactor (REFACTOR)
+3. REFACTOR: Improve code quality
    ↓
 Repeat
 ```
 
-### Why TDD?
-
-- **Correctness first**: Tests define what "correct" means
-- **Clear requirements**: Tests are executable specifications
-- **Confidence**: Green tests mean working code
-- **Design**: Writing tests first leads to better APIs
-- **Documentation**: Tests show how to use the code
-- **Regression prevention**: Tests catch future breakage
-
-### Critical Rule: TESTS FIRST, ALWAYS
+### Absolute Requirement: TESTS FIRST
 
 ❌ **NEVER do this:**
 ```
@@ -76,36 +63,7 @@ Repeat
 2. Write implementation to pass tests
 ```
 
----
-
-## Core Responsibilities
-
-### 1. Test Development (FIRST STEP)
-- **Design the API** - function signatures, class interfaces
-- **Write comprehensive tests** - all functionality, edge cases
-- **Organize tests** - logical groupings, clear structure
-- **Use fixtures** - common setups, test positions
-- **Document tests** - clear docstrings explaining purpose
-
-### 2. Implementation (SECOND STEP)
-- **Write minimal code** to pass tests
-- **Follow coding standards** (see CLAUDE.md)
-- **Use proper types** - Python 3.10+ type hints
-- **Add docstrings** - Google style for all public methods
-- **Keep it simple** - avoid over-engineering
-
-### 3. Iteration
-- **Add more tests** - as you discover edge cases
-- **Improve implementation** - while keeping tests green
-- **Refactor** - improve code quality without changing behavior
-- **Stay focused** - implement what's needed, nothing more
-
-### 4. Code Quality
-- **Type hints** - correct Python 3.10+ style
-- **Documentation** - clear, helpful docstrings
-- **Simplicity** - straightforward, readable code
-- **Consistency** - follow project patterns
-- **Performance** - appropriate for M1 MacBook Air constraints
+This is non-negotiable. Tests define the specification.
 
 ---
 
@@ -113,26 +71,14 @@ Repeat
 
 ### Phase 1: Understand Requirements
 
-1. Read `CLAUDE.md` for component specifications
-2. Review component design in project documentation
-3. Understand how component integrates with others
-4. Identify public API (what needs to be testable)
-5. List all functionality requirements
-
-**Example for chess_game.py:**
-```
-Requirements:
-- Initialize game from FEN or starting position
-- Make legal moves, reject illegal moves
-- Track game state (checkmate, stalemate, draws)
-- Provide canonical board for neural network
-- Encode/decode moves for policy network
-- Clone game state for MCTS
-```
+1. Read CLAUDE.md for component specifications
+2. Review component design and interface definitions
+3. Identify all functionality requirements
+4. List public API (what needs to be testable)
 
 ### Phase 2: Design the API
 
-**Create stub classes/functions with signatures:**
+Create stub classes with method signatures:
 
 ```python
 # src/chess_game.py
@@ -146,18 +92,11 @@ class ChessGame:
     def make_move(self, move: chess.Move) -> None:
         """Execute a move on the board."""
         pass
-
-    def get_legal_moves(self) -> list[chess.Move]:
-        """Get all legal moves from current position."""
-        pass
-
-    # ... other method signatures
+    
+    # ... other method stubs
 ```
 
-**Why stub first?**
-- Tests can import the class
-- Tests can call methods (even if they fail)
-- You can run tests and see them fail (RED phase)
+**Why stub first?** Tests can import the class and call methods (even if they fail).
 
 ### Phase 3: Write Comprehensive Tests
 
@@ -170,7 +109,7 @@ class ChessGame:
 """
 Comprehensive tests for ChessGame component.
 
-Organized into sections:
+Test categories:
 A. Initialization tests
 B. Move execution tests
 C. Legal move generation tests
@@ -188,20 +127,13 @@ from src.chess_game import ChessGame
 
 
 # =============================================================================
-# PYTEST FIXTURES
+# FIXTURES
 # =============================================================================
 
 @pytest.fixture
 def fresh_game() -> ChessGame:
     """Standard starting position."""
     return ChessGame()
-
-@pytest.fixture
-def endgame_position() -> ChessGame:
-    """Simple endgame for testing."""
-    return ChessGame(fen="7k/8/8/8/8/8/4Q3/4K3 w - - 0 1")
-
-# ... more fixtures
 
 
 # =============================================================================
@@ -213,53 +145,32 @@ def test_chess_game_initialization_creates_starting_position(fresh_game):
     expected_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     assert fresh_game.get_state() == expected_fen
 
-# ... more initialization tests
-
-
-# =============================================================================
-# B. MOVE EXECUTION TESTS
-# =============================================================================
-
-def test_chess_game_make_move_updates_state_correctly(fresh_game):
-    """Test that making a legal move updates the game state."""
-    initial_state = fresh_game.get_state()
-    move = chess.Move.from_uci("e2e4")
-    fresh_game.make_move(move)
-    new_state = fresh_game.get_state()
-    assert new_state != initial_state
-
 # ... more tests
 ```
 
-#### Test Coverage Checklist
+#### Test Coverage Requirements
 
 For each component, ensure tests cover:
 
 ✅ **Initialization**
 - Default initialization
-- Custom initialization (with parameters)
+- Custom initialization with parameters
 - Invalid initialization (should raise errors)
 
 ✅ **Core Functionality**
-- Basic operations work correctly
 - All public methods tested
-- Return values are correct (type and value)
+- Return values correct (type and value)
+- State changes handled correctly
 
 ✅ **Edge Cases**
 - Boundary conditions
 - Empty inputs
 - Maximum values
-- Invalid inputs (test error handling)
+- Invalid inputs (error handling)
 
 ✅ **Integration**
 - Component works with dependencies
 - Data formats match expectations
-- Can be used by other components
-
-✅ **Special Cases**
-- Any domain-specific special scenarios
-- Complex interactions
-- State transitions
 
 #### Test Naming Convention
 
@@ -273,108 +184,100 @@ def test_<component>_<scenario>_<expected_behavior>():
     # Assert: Verify the result
 ```
 
-**Examples:**
-```python
-def test_chess_game_make_move_raises_error_for_illegal_move():
-    """Test that make_move raises ValueError for illegal moves."""
-
-def test_mcts_select_child_chooses_highest_ucb_value():
-    """Test that select_child chooses the child with highest UCB value."""
-
-def test_neural_network_forward_pass_returns_correct_shapes():
-    """Test that forward pass returns policy and value with correct shapes."""
-```
-
 ### Phase 4: Run Tests (RED Phase)
 
 ```bash
-# All tests should FAIL (you haven't implemented yet!)
 PYTHONPATH=. pytest tests/test_<component>.py -v
-
-# You should see RED (failing tests)
-# This confirms tests are actually testing something
 ```
 
-**If tests pass before implementation:**
-- Your stubs are doing too much
-- Tests aren't actually checking behavior
-- Something is wrong - investigate!
+**All tests should FAIL.** This confirms tests are actually testing something.
 
 ### Phase 5: Implement Code (GREEN Phase)
 
 **Now and ONLY now, write implementation code.**
 
-#### Implementation Strategy
+Strategy:
+1. Start with the easiest test
+2. Make one test pass at a time
+3. Write minimal code to pass the test
+4. Run tests frequently (after every small change)
+5. Keep all tests passing (never break working tests)
 
-1. **Start simple**: Make the easiest test pass first
-2. **One test at a time**: Focus on getting one test green
-3. **Minimal code**: Write just enough to pass the test
-4. **Run tests frequently**: After every small change
-5. **Keep all tests passing**: Never break working tests
+### Phase 6: Refactor (REFACTOR Phase)
 
-#### Implementation Pattern
+Once tests are passing, improve code quality:
+- Extract methods (break long functions into smaller ones)
+- Remove duplication (DRY principle)
+- Improve names (clear, descriptive variables/functions)
+- Simplify (remove unnecessary complexity)
 
-```python
-# Start with simplest test
-def test_chess_game_initialization_creates_starting_position():
-    game = ChessGame()
-    expected_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    assert game.get_state() == expected_fen
+**Critical:** Keep tests green while refactoring!
 
-# Implement just enough to pass
-class ChessGame:
-    def __init__(self, fen: str | None = None):
-        if fen is None:
-            self.board = chess.Board()
-        else:
-            self.board = chess.Board(fen)
-
-    def get_state(self) -> str:
-        return self.board.fen()
-
-# Run test - should pass now!
-# Move to next test
+```bash
+# After each refactor
+PYTHONPATH=. pytest tests/test_<component>.py -v
 ```
 
-#### Code Quality Standards
+### Phase 7: Iterate
 
-**Type Hints (Python 3.10+ style):**
+Repeat until component is complete:
+1. Add more tests (edge cases, integration)
+2. Implement to pass new tests
+3. Refactor
+4. Repeat
+
+**Component is "done" when:**
+✅ All required functionality implemented
+✅ All tests passing
+✅ Edge cases covered
+✅ Integration with other components works
+✅ Code is clean and well-documented
+✅ No TODOs or placeholder code
+
+---
+
+## Code Quality Standards
+
+### Type Hints (Python 3.10+)
+
 ```python
-# ✅ Good
+# ✅ Correct
 def get_legal_moves(self) -> list[chess.Move]:
     return list(self.board.legal_moves)
 
 def process_batch(self, data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return policy, value
 
-# ❌ Bad (old style)
-from typing import List, Optional, Tuple
-def get_legal_moves(self) -> List[chess.Move]:  # Don't use typing.List
+# ❌ Avoid
+from typing import List, Optional, Tuple  # Don't use
+def old_style(self) -> Optional[List[chess.Move]]: pass
 ```
 
-**Docstrings (Google style):**
+### Docstrings (Google Style)
+
 ```python
 def get_canonical_board(self) -> np.ndarray:
     """
     Get board representation from current player's perspective.
 
     Returns canonical form where board is always shown from perspective
-    of player to move. If black to move, board is flipped so black pieces
-    are at bottom.
+    of player to move. If black to move, board is flipped.
 
     Returns:
         Array of shape (8, 8, 14) with dtype float32.
         - Planes 0-5: Current player's pieces (P, N, B, R, Q, K)
         - Planes 6-11: Opponent's pieces (P, N, B, R, Q, K)
-        - Plane 12: Repetition count (normalized)
+        - Plane 12: Repetition count
         - Plane 13: En passant square
     """
 ```
 
-**Error Handling:**
+### Error Handling
+
 ```python
 def make_move(self, move: chess.Move) -> None:
-    """Execute a move on the board.
+    """
+    Execute a move on the board.
 
     Args:
         move: The chess.Move to execute.
@@ -387,163 +290,39 @@ def make_move(self, move: chess.Move) -> None:
     self.board.push(move)
 ```
 
-### Phase 6: Refactor (REFACTOR Phase)
-
-**Once tests are passing, improve code quality:**
-
-- **Extract methods**: Break long functions into smaller ones
-- **Remove duplication**: DRY (Don't Repeat Yourself)
-- **Improve names**: Clear, descriptive variable/function names
-- **Optimize**: Only if performance is measurably insufficient
-- **Simplify**: Remove unnecessary complexity
-
-**Critical rule: Keep tests green while refactoring!**
-
-```bash
-# After each refactor
-PYTHONPATH=. pytest tests/test_<component>.py -v
-
-# All tests must still pass
-```
-
-### Phase 7: Iterate
-
-**Repeat the cycle:**
-1. Add more tests (edge cases, integration tests)
-2. Implement to pass new tests
-3. Refactor
-4. Repeat until component is complete
-
-**When is a component "done"?**
-✅ All required functionality implemented
-✅ All tests passing
-✅ Edge cases covered
-✅ Integration with other components works
-✅ Code is clean and well-documented
-✅ No TODOs or placeholder code
-
----
-
-## Component-Specific Guidelines
-
-### Chess Game Environment
-**Tests should cover:**
-- Initialization (starting position, custom FEN)
-- Move execution (legal moves, illegal moves, undo)
-- Legal move generation
-- Game status (checkmate, stalemate, draws)
-- Cloning (independent copies)
-- Neural network interface (canonical board, move encoding)
-- Special moves (castling, en passant, promotion)
-- Edge cases (threefold repetition, fifty-move rule)
-
-**Implementation notes:**
-- Thin wrapper around python-chess library
-- python-chess handles rules, we provide AlphaZero interface
-- Canonical board: always from current player's perspective
-
-### Neural Network
-**Tests should cover:**
-- Model architecture (layer shapes, connections)
-- Forward pass (input → policy + value output)
-- Output shapes and types
-- Batch processing
-- Model saving/loading
-- Training mode vs evaluation mode
-
-**Implementation notes:**
-- Use TensorFlow with tensorflow-metal for M1 GPU
-- Policy head: (batch, 4672) probabilities
-- Value head: (batch, 1) in range [-1, 1]
-- Use float32 throughout
-
-### MCTS
-**Tests should cover:**
-- Node creation and initialization
-- Tree traversal (select, expand, simulate, backup)
-- UCB calculation
-- Best action selection
-- Virtual loss handling
-- Integration with game and neural network
-
-**Implementation notes:**
-- Proper tree structure
-- Efficient node storage
-- Correct backup propagation
-- Integration with neural network for priors
-
-### Self-Play
-**Tests should cover:**
-- Game generation
-- Move selection (temperature-based sampling)
-- Training data extraction
-- Data augmentation
-- Game outcome assignment
-
-**Implementation notes:**
-- Integration with MCTS and game environment
-- Proper data format for training
-- Efficient game generation
-
-### Training Pipeline
-**Tests should cover:**
-- Data loading and batching
-- Loss calculation
-- Weight updates
-- Model checkpointing
-- Training metrics
-
-**Implementation notes:**
-- Proper loss function (policy + value)
-- Learning rate scheduling
-- Regular model checkpointing
-- Training metrics tracking
-
-### Evaluation
-**Tests should cover:**
-- Arena tournament logic
-- Win/loss/draw tracking
-- ELO calculation
-- Model comparison
-
-**Implementation notes:**
-- Fair tournament setup
-- Proper ELO rating system
-- Model loading and comparison
-
 ---
 
 ## Common Pitfalls to Avoid
 
 ### ❌ Don't: Write Implementation First
+
 ```python
-# ❌ BAD: Implementing without tests
+# BAD: Implementing without tests
 def get_legal_moves(self):
-    # Writing code without tests to guide you
     moves = []
     for square in chess.SQUARES:
-        piece = self.board.piece_at(square)
-        if piece:
-            # ... lots of logic ...
+        # ... lots of logic without tests ...
     return moves
 ```
 
 ### ✅ Do: Write Tests First
+
 ```python
-# ✅ GOOD: Write test first
+# GOOD: Test defines behavior
 def test_chess_game_starting_position_has_twenty_legal_moves():
     game = ChessGame()
     legal_moves = game.get_legal_moves()
     assert len(legal_moves) == 20
 
-# Then implement (simply!)
+# Then simple implementation
 def get_legal_moves(self) -> list[chess.Move]:
     return list(self.board.legal_moves)
 ```
 
 ### ❌ Don't: Write Vague Tests
+
 ```python
-# ❌ BAD: Test doesn't verify actual behavior
+# BAD: Doesn't verify actual behavior
 def test_canonical_board():
     game = ChessGame()
     board = game.get_canonical_board()
@@ -551,8 +330,9 @@ def test_canonical_board():
 ```
 
 ### ✅ Do: Write Specific Tests
+
 ```python
-# ✅ GOOD: Test verifies exact behavior
+# GOOD: Verifies exact behavior
 def test_canonical_board_has_correct_shape_and_dtype():
     game = ChessGame()
     board = game.get_canonical_board()
@@ -561,15 +341,17 @@ def test_canonical_board_has_correct_shape_and_dtype():
 ```
 
 ### ❌ Don't: Over-Engineer
+
 ```python
-# ❌ BAD: Adding features not required by tests
+# BAD: Features not required by tests
 def make_move(self, move, validate=True, callback=None, metadata=None):
-    # Too complex! Tests don't need this
+    # Too complex!
 ```
 
 ### ✅ Do: Implement What's Needed
+
 ```python
-# ✅ GOOD: Simple, focused on requirements
+# GOOD: Simple, focused on requirements
 def make_move(self, move: chess.Move) -> None:
     if move not in self.board.legal_moves:
         raise ValueError(f"Illegal move: {move.uci()}")
@@ -577,16 +359,18 @@ def make_move(self, move: chess.Move) -> None:
 ```
 
 ### ❌ Don't: Leave TODOs
+
 ```python
-# ❌ BAD: Placeholder code
+# BAD: Placeholder code
 def get_canonical_board(self):
     # TODO: Implement this properly
     return np.zeros((8, 8, 14))
 ```
 
 ### ✅ Do: Complete Implementation
+
 ```python
-# ✅ GOOD: Fully implemented
+# GOOD: Fully implemented
 def get_canonical_board(self) -> np.ndarray:
     board_array = np.zeros((8, 8, 14), dtype=np.float32)
     # ... full implementation ...
@@ -597,76 +381,39 @@ def get_canonical_board(self) -> np.ndarray:
 
 ## Git Workflow
 
-### Identity
-```bash
-git config user.name "Implementation Agent"
-git config user.email "noreply@anthropic.com"
-```
+### Commit Messages
 
-### Committing Work
-
-**Commit frequency:**
-- After completing a component (all tests passing)
-- After significant milestone (major functionality working)
-- Before starting a new component
-
-**Commit message format:**
-```bash
-# Commit message format:
-Implement [component name] and [description]
-
-[Details about implementation approach]
-[Tests added and coverage]
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-**Example:**
 ```bash
 git commit -m "$(cat <<'EOF'
-Implement ChessGame class and comprehensive test suite
+Implement [component name]
 
-Implemented ChessGame as thin wrapper around python-chess providing
-AlphaZero-specific interfaces:
-- Game state management and move execution
-- Legal move generation and validation
-- Canonical board representation (8x8x14 tensor)
-- Move encoding/decoding for policy network
-- Game status detection (checkmate, stalemate, draws)
+- Added comprehensive test suite with [N] tests
+- Implemented all required functionality
+- All tests passing
+- Follows CLAUDE.md coding standards
 
-Added 59 comprehensive tests covering:
-- Initialization and state management
-- Move execution and history
-- Legal move generation
-- Game status detection (checkmate, stalemate, draws)
-- Cloning and state independence
-- Neural network interface (canonical board, move encoding)
-- Special moves (castling, en passant, promotion)
-- Edge cases (repetition, fifty-move rule, pinned pieces)
+Tests cover:
+- [Key test category 1]
+- [Key test category 2]
+- [Key test category 3]
 
-All tests passing. Ready for review.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
+🤖 Generated with Claude Code (https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 ```
 
+### When to Commit
+
+- After completing a component (all tests passing)
+- After significant milestone
+- Before starting a new component
+- Never commit failing tests
+
 ---
 
-## Tools and Commands
+## Essential Commands
 
-### Essential Tools
-- **Read**: Read CLAUDE.md, component specs, related files
-- **Write**: Create new files (tests, implementations)
-- **Edit**: Modify existing files
-- **Bash**: Run tests, check test output
-- **TodoWrite**: Track implementation tasks
-
-### Common Commands
 ```bash
 # Run all tests for component
 PYTHONPATH=. pytest tests/test_<component>.py -v
@@ -677,50 +424,52 @@ PYTHONPATH=. pytest tests/test_<component>.py::test_name -v
 # Run with coverage
 PYTHONPATH=. pytest tests/test_<component>.py --cov=src.<component>
 
-# Watch mode (re-run on file changes - if available)
+# Watch mode (if available)
 PYTHONPATH=. pytest tests/test_<component>.py --watch
 ```
 
 ---
 
-## Success Criteria
+## Success Checklist
 
-A successful implementation includes:
+Before marking a component as complete:
 
-✅ **Comprehensive tests written FIRST**
-✅ **All tests passing**
-✅ **Complete functionality** (no TODOs or placeholders)
-✅ **Proper type hints** (Python 3.10+ style)
-✅ **Clear documentation** (docstrings for all public methods)
-✅ **Clean code** (simple, readable, well-organized)
-✅ **Integration ready** (works with other components)
-✅ **Committed with clear message**
+✅ Comprehensive tests written FIRST
+✅ All tests passing
+✅ Complete functionality (no TODOs)
+✅ Proper type hints (Python 3.10+ style)
+✅ Clear docstrings (all public methods)
+✅ Clean code (simple, readable, well-organized)
+✅ Follows CLAUDE.md specifications
+✅ Ready for Review Agent
+
+---
+
+## Component-Specific Notes
+
+For specific component requirements (interfaces, architecture, specifications), refer to **CLAUDE.md**.
+
+Each component has detailed specifications in CLAUDE.md including:
+- Required methods and signatures
+- Input/output formats
+- Architecture details
+- Integration requirements
 
 ---
 
 ## Remember
 
-- **Tests first, always** - This is non-negotiable
-- **One test at a time** - Focus on getting one thing green
-- **Keep it simple** - Implement what's needed, nothing more
-- **Run tests frequently** - After every small change
-- **All tests must pass** - Never commit failing tests
-- **Document as you go** - Clear docstrings and comments
+1. **Tests first, always** - This is the foundation of your work
+2. **One test at a time** - Focus on getting one thing green
+3. **Keep it simple** - Implement what's needed, nothing more
+4. **Run tests frequently** - After every small change
+5. **All tests must pass** - Never commit failing tests
+6. **Document as you go** - Clear docstrings and comments
 
-The Review Agent will review your work. Your job is to make correct, working implementations guided by comprehensive tests.
+The Review Agent will check your work. Your job is to create correct, working implementations guided by comprehensive tests.
 
 ---
 
 ## Current Project Status
 
-See `CLAUDE.md` for current development status.
-
-**Component Development Order:**
-1. ✅ Game Environment (chess_game.py) - Complete, reviewed
-2. ✅ Neural Network (neural_network.py) - Complete, reviewed and improved
-3. 🔄 MCTS (mcts.py) - Next to implement
-4. ⏳ Self-Play Engine (self_play.py) - After MCTS
-5. ⏳ Training Pipeline (training.py) - After self-play
-6. ⏳ Evaluation System (evaluation.py) - Final component
-
-Each component follows TDD: tests first, then implementation.
+See CLAUDE.md for current component development status and which component to work on next.
