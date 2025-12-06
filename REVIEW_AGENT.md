@@ -233,6 +233,38 @@ def test_component():
 
 ---
 
+## ⚠️ REQUIRED: Follow TEST_GUIDELINES.md When Adding Tests
+
+When adding or modifying tests during review, you **must** follow the conventions defined in **TEST_GUIDELINES.md**. This ensures consistency across the codebase.
+
+### Key Requirements
+
+1. **Use test classes** - Group tests by component/function (e.g., `TestChessGameInitialization`)
+
+2. **Use category prefixes** within classes:
+   - `test_valid_*` - Happy path, expected behavior
+   - `test_edge_*` - Boundary conditions, limits
+   - `test_error_*` - Error handling, invalid inputs
+   - `test_integration_*` - Component interactions
+   - `test_regression_*` - Bug fixes (include issue ID)
+
+3. **Use parametrization with descriptive IDs** for variations:
+   ```python
+   @pytest.mark.parametrize('fen,expected', [
+       pytest.param(STARTING_FEN, 20, id="starting_position"),
+       pytest.param(ENDGAME_FEN, 9, id="simple_endgame"),
+   ])
+   def test_valid_move_count(self, fen: str, expected: int) -> None: ...
+   ```
+
+4. **Add tests to existing test classes** when they fit logically
+
+5. **Create new test classes** for new functionality areas
+
+Read TEST_GUIDELINES.md thoroughly before adding any tests. The Implementation Agent follows these same conventions, so your additions should be consistent with existing tests.
+
+---
+
 ## Component-Specific Considerations
 
 ### Chess Game Environment
@@ -311,11 +343,11 @@ def test_component():
 5. **Consider downstream effects**: How does this affect other components?
 
 ### When Adding Tests
-1. **Name clearly**: `test_<component>_<scenario>_<expected>`
-2. **Document purpose**: Clear docstring explaining what's tested
-3. **Add comments**: Explain non-obvious test logic
-4. **Show expected values**: Make assertions explicit
-5. **Group logically**: Organize tests by functionality
+1. **Follow TEST_GUIDELINES.md**: Use proper class organization and naming conventions
+2. **Name with category prefixes**: `test_valid_*`, `test_edge_*`, `test_error_*`
+3. **Document purpose**: Clear docstring explaining what's tested
+4. **Use parametrization**: For testing variations with descriptive IDs
+5. **Add to existing classes**: When the test fits an existing category
 
 ### Creating Review Notes
 Use this template:
@@ -332,9 +364,10 @@ Brief overview of what was reviewed and overall findings.
    - Fix: How it was corrected
 
 ## Tests Added
-1. **Test Name**
-   - Purpose: What this test validates
-   - Coverage: What edge cases it covers
+1. **Test Class: TestXxxYyy**
+   - `test_valid_*`: [description]
+   - `test_edge_*`: [description]
+   - `test_error_*`: [description]
 
 ## Integration Concerns
 - How this component interacts with others
@@ -378,11 +411,12 @@ Missing Tests:
 2. No edge case tests for [scenario]
 ```
 
-**Step 4:** Fix bugs and add tests
+**Step 4:** Fix bugs and add tests (following TEST_GUIDELINES.md conventions)
 - Fixed [bug] by [solution]
 - Fixed [another bug] by [solution]
-- Added comprehensive tests for [functionality]
-- Added edge case tests
+- Added `test_valid_*` tests for [functionality]
+- Added `test_edge_*` tests for boundary conditions
+- Added `test_error_*` tests for invalid inputs
 
 **Step 5:** Document in REVIEW_NOTES.md
 
@@ -429,8 +463,13 @@ PYTHONPATH=. pytest tests/ -v
 # Run tests for specific component
 PYTHONPATH=. pytest tests/test_<component>.py -v
 
-# Run specific test
-PYTHONPATH=. pytest tests/test_<component>.py::test_name -v
+# Run specific test class
+PYTHONPATH=. pytest tests/test_<component>.py::TestClassName -v
+
+# Run tests by category
+PYTHONPATH=. pytest tests/test_<component>.py -k "test_valid" -v
+PYTHONPATH=. pytest tests/test_<component>.py -k "test_edge" -v
+PYTHONPATH=. pytest tests/test_<component>.py -k "test_error" -v
 
 # Check test coverage
 PYTHONPATH=. pytest tests/ --cov=src --cov-report=term-missing
@@ -447,7 +486,7 @@ git log --oneline -10
 A successful review includes:
 
 ✅ **All bugs found and fixed**
-✅ **Comprehensive tests added**
+✅ **Comprehensive tests added** (following TEST_GUIDELINES.md)
 ✅ **All tests passing**
 ✅ **Integration verified** (component works with others)
 ✅ **Clear documentation of changes**
@@ -459,6 +498,7 @@ A successful review includes:
 ## Remember
 
 - **Your job is to make code bulletproof**, not just working
+- **Follow TEST_GUIDELINES.md** when adding any tests
 - **Test real scenarios**, not just happy paths
 - **Think like an adversary** - how would you break this?
 - **Validate everything** - structure, content, values, edge cases
