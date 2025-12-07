@@ -76,7 +76,7 @@ pytest --cov=src                # With coverage
 **Component Status:**
 1. ✅ Game Environment (chess_game.py) - Complete
 2. ✅ Neural Network (neural_network.py) - Complete
-3. ⏳ MCTS (mcts.py)
+3. ✅ MCTS (mcts.py) - Complete
 4. ⏳ Self-Play Engine (self_play.py)
 5. ⏳ Training Pipeline (training.py)
 6. ⏳ Evaluation System (evaluation.py)
@@ -84,7 +84,7 @@ pytest --cov=src                # With coverage
 ## Milestones
 
 **Milestone 1: Minimum Viable Training Loop**
-- Components needed: ChessGame ✅, ChessNN ✅, MCTS ⏳, Self-Play ⏳
+- Components needed: ChessGame ✅, ChessNN ✅, MCTS ✅, Self-Play ⏳
 - Checkpoint: Once self-play can generate games and train the network
 - Action: Run leaf parallelization benchmark
   - Measure: simulations/second, games/hour with simple MCTS
