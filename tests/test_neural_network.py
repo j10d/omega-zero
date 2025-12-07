@@ -173,14 +173,16 @@ class TestChessNNModelArchitecture:
     def test_valid_model_is_compiled(self, built_model: ChessNN) -> None:
         """Model is compiled with optimizer and loss functions."""
         assert built_model.model.optimizer is not None
-        assert isinstance(built_model.model.optimizer, tf.keras.optimizers.Optimizer)
+        # Legacy optimizer has different base class than tf.keras.optimizers.Optimizer
+        assert hasattr(built_model.model.optimizer, 'learning_rate')
 
     def test_valid_optimizer_learning_rate(self) -> None:
         """Optimizer is configured with specified learning rate."""
         custom_lr = 0.01
         nn = ChessNN(learning_rate=custom_lr)
         nn.build_model()
-        assert nn.model.optimizer.learning_rate.numpy() == custom_lr
+        # Use np.isclose for float32 comparison
+        assert np.isclose(nn.model.optimizer.learning_rate.numpy(), custom_lr)
 
     def test_valid_has_loss_functions(self, built_model: ChessNN) -> None:
         """Model has loss functions configured."""

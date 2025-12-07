@@ -87,7 +87,7 @@ class ChessNN:
 
         # Compile model with optimizer and loss functions
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=self.learning_rate),
             loss={
                 'policy': 'categorical_crossentropy',
                 'value': 'mean_squared_error'
