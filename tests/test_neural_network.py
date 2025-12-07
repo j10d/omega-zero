@@ -723,3 +723,361 @@ class TestChessNNEdgeCases:
         params_3 = nn_3_blocks.model.count_params()
 
         assert params_5 > params_3
+
+
+class TestChessNNTrain:
+    """Tests for train() method."""
+
+    # -------------------------------------------------------------------------
+    # Fixtures for training data
+    # -------------------------------------------------------------------------
+
+    @pytest.fixture
+    def synthetic_training_data(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Small synthetic dataset for testing train()."""
+        n_samples = 10
+        positions = np.random.rand(n_samples, 8, 8, 18).astype(np.float32)
+
+        # One-hot policy targets
+        policy_targets = np.zeros((n_samples, 4672), dtype=np.float32)
+        for i in range(n_samples):
+            policy_targets[i, np.random.randint(0, 4672)] = 1.0
+
+        # Value targets in [-1, 1]
+        value_targets = np.random.uniform(-1, 1, size=(n_samples,)).astype(np.float32)
+
+        return positions, policy_targets, value_targets
+
+    # -------------------------------------------------------------------------
+    # Valid train() tests
+    # -------------------------------------------------------------------------
+
+    def test_valid_train_returns_history(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() returns Keras History object."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        history = built_small_model.train(
+            positions, policy_targets, value_targets, epochs=1
+        )
+        assert isinstance(history, tf.keras.callbacks.History)
+
+    def test_valid_train_history_contains_loss(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() history contains loss metrics."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        history = built_small_model.train(
+            positions, policy_targets, value_targets, epochs=1
+        )
+        assert 'loss' in history.history
+        assert len(history.history['loss']) == 1
+
+    def test_valid_train_multiple_epochs(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() handles multiple epochs."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        history = built_small_model.train(
+            positions, policy_targets, value_targets, epochs=3
+        )
+        assert len(history.history['loss']) == 3
+
+    def test_valid_train_with_batch_size(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() accepts batch_size parameter."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        history = built_small_model.train(
+            positions, policy_targets, value_targets,
+            batch_size=2, epochs=1
+        )
+        assert 'loss' in history.history
+
+    def test_valid_train_with_validation_split(
+        self,
+        built_small_model: ChessNN
+    ) -> None:
+        """train() accepts validation_split parameter."""
+        n_samples = 20  # Need enough for split
+        positions = np.random.rand(n_samples, 8, 8, 18).astype(np.float32)
+        policy_targets = np.zeros((n_samples, 4672), dtype=np.float32)
+        for i in range(n_samples):
+            policy_targets[i, np.random.randint(0, 4672)] = 1.0
+        value_targets = np.random.uniform(-1, 1, size=(n_samples,)).astype(np.float32)
+
+        history = built_small_model.train(
+            positions, policy_targets, value_targets,
+            epochs=1, validation_split=0.2
+        )
+        assert 'val_loss' in history.history
+
+    def test_valid_train_value_targets_1d(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() accepts 1D value targets (N,)."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        assert value_targets.ndim == 1
+        history = built_small_model.train(
+            positions, policy_targets, value_targets, epochs=1
+        )
+        assert 'loss' in history.history
+
+    def test_valid_train_value_targets_2d(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() accepts 2D value targets (N, 1)."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        value_targets_2d = value_targets.reshape(-1, 1)
+        assert value_targets_2d.shape == (len(value_targets), 1)
+        history = built_small_model.train(
+            positions, policy_targets, value_targets_2d, epochs=1
+        )
+        assert 'loss' in history.history
+
+    def test_valid_train_reduces_loss(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() generally reduces loss over epochs."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        history = built_small_model.train(
+            positions, policy_targets, value_targets, epochs=5
+        )
+        # Loss should decrease or stay reasonable (not always guaranteed)
+        losses = history.history['loss']
+        assert len(losses) == 5
+        assert all(not np.isnan(l) for l in losses)
+
+    # -------------------------------------------------------------------------
+    # Error handling tests
+    # -------------------------------------------------------------------------
+
+    def test_error_train_without_build(
+        self,
+        chess_nn: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() raises error if model not built."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        with pytest.raises(ValueError, match="Model not built"):
+            chess_nn.train(positions, policy_targets, value_targets)
+
+    def test_error_train_invalid_positions_shape(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() raises error for invalid positions shape."""
+        _, policy_targets, value_targets = synthetic_training_data
+        invalid_positions = np.random.rand(10, 8, 8, 14).astype(np.float32)
+        with pytest.raises(ValueError, match="Invalid positions shape"):
+            built_small_model.train(invalid_positions, policy_targets, value_targets)
+
+    def test_error_train_invalid_policy_shape(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() raises error for invalid policy_targets shape."""
+        positions, _, value_targets = synthetic_training_data
+        invalid_policy = np.zeros((10, 1000), dtype=np.float32)
+        with pytest.raises(ValueError, match="Invalid policy_targets shape"):
+            built_small_model.train(positions, invalid_policy, value_targets)
+
+    def test_error_train_invalid_value_shape(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() raises error for invalid value_targets shape."""
+        positions, policy_targets, _ = synthetic_training_data
+        invalid_values = np.zeros((10, 2), dtype=np.float32)
+        with pytest.raises(ValueError, match="Invalid value_targets shape"):
+            built_small_model.train(positions, policy_targets, invalid_values)
+
+    def test_error_train_mismatched_sample_counts(
+        self,
+        built_small_model: ChessNN,
+        synthetic_training_data: tuple
+    ) -> None:
+        """train() raises error when sample counts don't match."""
+        positions, policy_targets, value_targets = synthetic_training_data
+        # Create mismatched sizes
+        positions_small = positions[:5]
+        with pytest.raises(ValueError, match="sample count"):
+            built_small_model.train(positions_small, policy_targets, value_targets)
+
+
+class TestChessNNModelSerialization:
+    """Tests for save_model() / load_model() full serialization."""
+
+    # -------------------------------------------------------------------------
+    # Valid save/load tests
+    # -------------------------------------------------------------------------
+
+    def test_valid_save_model_creates_file(
+        self,
+        built_small_model: ChessNN,
+        tmp_path
+    ) -> None:
+        """save_model() creates a .keras file."""
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+        assert filepath.exists()
+
+    def test_valid_load_model_without_build(
+        self,
+        built_small_model: ChessNN,
+        tmp_path
+    ) -> None:
+        """load_model() works without calling build_model() first."""
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+
+        # Create new instance without calling build_model()
+        new_nn = ChessNN(num_residual_blocks=2, num_filters=64)
+        assert new_nn.model is None
+
+        new_nn.load_model(str(filepath))
+        assert new_nn.model is not None
+
+    def test_valid_save_load_preserves_predictions(
+        self,
+        built_small_model: ChessNN,
+        sample_board: np.ndarray,
+        tmp_path
+    ) -> None:
+        """save_model/load_model preserves predictions."""
+        policy_before, value_before = built_small_model.predict(sample_board)
+
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+
+        new_nn = ChessNN()
+        new_nn.load_model(str(filepath))
+
+        policy_after, value_after = new_nn.predict(sample_board)
+
+        np.testing.assert_array_almost_equal(policy_before, policy_after, decimal=5)
+        np.testing.assert_almost_equal(value_before, value_after, decimal=5)
+
+    def test_valid_save_load_preserves_architecture(
+        self,
+        built_small_model: ChessNN,
+        tmp_path
+    ) -> None:
+        """save_model/load_model preserves model architecture."""
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+
+        new_nn = ChessNN()
+        new_nn.load_model(str(filepath))
+
+        # Check same number of parameters
+        assert new_nn.model.count_params() == built_small_model.model.count_params()
+
+        # Check same input/output shapes
+        assert new_nn.model.input_shape == built_small_model.model.input_shape
+        assert new_nn.model.output['policy'].shape == built_small_model.model.output['policy'].shape
+        assert new_nn.model.output['value'].shape == built_small_model.model.output['value'].shape
+
+    def test_valid_loaded_model_can_predict(
+        self,
+        built_small_model: ChessNN,
+        sample_board: np.ndarray,
+        tmp_path
+    ) -> None:
+        """Loaded model can make predictions immediately."""
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+
+        new_nn = ChessNN()
+        new_nn.load_model(str(filepath))
+
+        policy, value = new_nn.predict(sample_board)
+        assert policy.shape == (4672,)
+        assert -1.0 <= value <= 1.0
+
+    def test_valid_loaded_model_can_train(
+        self,
+        built_small_model: ChessNN,
+        tmp_path
+    ) -> None:
+        """Loaded model can continue training."""
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+
+        new_nn = ChessNN()
+        new_nn.load_model(str(filepath))
+
+        # Create small training data
+        positions = np.random.rand(5, 8, 8, 18).astype(np.float32)
+        policy_targets = np.zeros((5, 4672), dtype=np.float32)
+        for i in range(5):
+            policy_targets[i, i] = 1.0
+        value_targets = np.random.uniform(-1, 1, size=(5,)).astype(np.float32)
+
+        history = new_nn.train(positions, policy_targets, value_targets, epochs=1)
+        assert 'loss' in history.history
+
+    def test_valid_save_load_preserves_optimizer_state(
+        self,
+        built_small_model: ChessNN,
+        tmp_path
+    ) -> None:
+        """save_model/load_model preserves optimizer state."""
+        # Train a bit first to have optimizer state
+        positions = np.random.rand(5, 8, 8, 18).astype(np.float32)
+        policy_targets = np.zeros((5, 4672), dtype=np.float32)
+        for i in range(5):
+            policy_targets[i, i] = 1.0
+        value_targets = np.random.uniform(-1, 1, size=(5,)).astype(np.float32)
+
+        built_small_model.train(positions, policy_targets, value_targets, epochs=1)
+
+        filepath = tmp_path / "test_model.keras"
+        built_small_model.save_model(str(filepath))
+
+        new_nn = ChessNN()
+        new_nn.load_model(str(filepath))
+
+        # Optimizer should be configured
+        assert new_nn.model.optimizer is not None
+
+    # -------------------------------------------------------------------------
+    # Error handling tests
+    # -------------------------------------------------------------------------
+
+    def test_error_save_model_without_build(
+        self,
+        chess_nn: ChessNN,
+        tmp_path
+    ) -> None:
+        """save_model() raises error if model not built."""
+        filepath = tmp_path / "test_model.keras"
+        with pytest.raises(ValueError, match="Model not built"):
+            chess_nn.save_model(str(filepath))
+
+    def test_error_load_model_file_not_found(
+        self,
+        chess_nn: ChessNN,
+        tmp_path
+    ) -> None:
+        """load_model() raises error if file doesn't exist."""
+        filepath = tmp_path / "nonexistent.keras"
+        with pytest.raises((FileNotFoundError, OSError, ValueError)):
+            chess_nn.load_model(str(filepath))

@@ -164,6 +164,88 @@ class ChessNN:
 
         return policy, value
 
+    def train(
+        self,
+        positions: np.ndarray,
+        policy_targets: np.ndarray,
+        value_targets: np.ndarray,
+        batch_size: int = 32,
+        epochs: int = 1,
+        validation_split: float = 0.0
+    ) -> tf.keras.callbacks.History:
+        """
+        Train the model on provided data.
+
+        Wrapper around model.fit() with input validation.
+
+        Args:
+            positions: Board tensors, shape (N, 8, 8, 18).
+            policy_targets: One-hot move targets, shape (N, 4672).
+            value_targets: Position evaluations, shape (N,) or (N, 1), range [-1, 1].
+            batch_size: Training batch size (default 32).
+            epochs: Number of training epochs (default 1).
+            validation_split: Fraction for validation (default 0.0).
+
+        Returns:
+            Keras History object with training metrics.
+
+        Raises:
+            ValueError: If model not built or input shapes invalid.
+        """
+        if self.model is None:
+            raise ValueError("Model not built. Call build_model() first.")
+
+        # Validate positions shape
+        if positions.ndim != 4 or positions.shape[1:] != (8, 8, 18):
+            raise ValueError(
+                f"Invalid positions shape: {positions.shape}. "
+                f"Expected (N, 8, 8, 18)."
+            )
+
+        # Validate policy_targets shape
+        if policy_targets.ndim != 2 or policy_targets.shape[1] != 4672:
+            raise ValueError(
+                f"Invalid policy_targets shape: {policy_targets.shape}. "
+                f"Expected (N, 4672)."
+            )
+
+        # Validate value_targets shape (accept both (N,) and (N, 1))
+        if value_targets.ndim == 1:
+            value_targets = value_targets.reshape(-1, 1)
+        elif value_targets.ndim != 2 or value_targets.shape[1] != 1:
+            raise ValueError(
+                f"Invalid value_targets shape: {value_targets.shape}. "
+                f"Expected (N,) or (N, 1)."
+            )
+
+        # Validate matching sample counts
+        n_positions = positions.shape[0]
+        n_policy = policy_targets.shape[0]
+        n_value = value_targets.shape[0]
+
+        if n_positions != n_policy or n_positions != n_value:
+            raise ValueError(
+                f"Mismatched sample count: positions={n_positions}, "
+                f"policy_targets={n_policy}, value_targets={n_value}."
+            )
+
+        # Ensure float32
+        positions = positions.astype(np.float32)
+        policy_targets = policy_targets.astype(np.float32)
+        value_targets = value_targets.astype(np.float32)
+
+        # Train
+        history = self.model.fit(
+            positions,
+            {'policy': policy_targets, 'value': value_targets},
+            batch_size=batch_size,
+            epochs=epochs,
+            validation_split=validation_split,
+            verbose=0
+        )
+
+        return history
+
     def save_weights(self, filepath: str) -> None:
         """
         Save model weights to file.
@@ -193,6 +275,37 @@ class ChessNN:
             raise ValueError("Model not built. Call build_model() first.")
 
         self.model.load_weights(filepath)
+
+    def save_model(self, filepath: str) -> None:
+        """
+        Save complete model (architecture + weights + optimizer state).
+
+        Uses the Keras .keras format for full serialization.
+
+        Args:
+            filepath: Path to save model (e.g., 'model.keras').
+
+        Raises:
+            ValueError: If model not built.
+        """
+        if self.model is None:
+            raise ValueError("Model not built. Call build_model() first.")
+
+        self.model.save(filepath)
+
+    def load_model(self, filepath: str) -> None:
+        """
+        Load complete model from file.
+
+        Rebuilds self.model from file. Does not require build_model() first.
+
+        Args:
+            filepath: Path to load model from.
+
+        Raises:
+            FileNotFoundError: If file doesn't exist.
+        """
+        self.model = tf.keras.models.load_model(filepath)
 
     def _build_residual_block(
         self,
