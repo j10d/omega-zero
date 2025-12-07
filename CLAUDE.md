@@ -36,8 +36,9 @@ omega-zero/
 ├── CLAUDE.md                    # This file
 ├── IMPLEMENTATION_AGENT.md      # Implementation Agent instructions
 ├── REVIEW_AGENT.md              # Review Agent instructions
+├── BOARD_REPRESENTATION.md      # Board tensor specification
+├── NEURAL_NETWORK.md            # Neural network specification
 ├── EXPERIMENTS.md               # Research experiments (separate track)
-├── requirements.txt             # Python dependencies
 ├── src/
 │   ├── chess_game.py           # Game environment & rules engine
 │   ├── neural_network.py       # Policy + value network
@@ -60,7 +61,7 @@ omega-zero/
 # Setup
 python3.10 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e ".[dev,metal]"
 
 # Testing
 pytest                          # Run all tests
@@ -122,7 +123,9 @@ def old_style(self) -> Optional[List[chess.Move]]: pass  # Don't use
 
 ### 1. ChessGame Class (Game Environment)
 
-**Purpose:** Wrapper around python-chess providing AlphaZero-specific interfaces
+See [BOARD_REPRESENTATION.md](BOARD_REPRESENTATION.md) for board tensor specification.
+
+**Purpose:** Wrapper around python-chess providing AlphaZero-specific interfaces.
 
 **Key Methods:**
 ```python
@@ -140,73 +143,15 @@ def get_move_index(move: chess.Move) -> int  # Returns [0, 4671]
 def get_move_from_index(index: int) -> chess.Move
 ```
 
-**Board Representation (18 planes):**
-- Planes 0-5: Current player's pieces (P, N, B, R, Q, K)
-- Planes 6-11: Opponent's pieces (P, N, B, R, Q, K)
-- Plane 12: Repetition count
-- Plane 13: En passant square
-- Plane 14: Current player kingside castling rights
-- Plane 15: Current player queenside castling rights
-- Plane 16: Opponent kingside castling rights
-- Plane 17: Opponent queenside castling rights
-
-**Canonical Form:** Always flip board if black to move (current player's pieces on ranks 1-2)
-
-**Move Encoding:** 4,672 possible moves (AlphaZero encoding: 73 planes × 64 squares)
-
 ### 2. ChessNN Class (Neural Network)
 
-**Architecture:** AlphaZero-style with residual blocks
+See [NEURAL_NETWORK.md](NEURAL_NETWORK.md) for full specification.
 
-**Network Structure:**
-```
-Input: (batch_size, 8, 8, 18)
-    ↓
-Initial Conv Block
-    Conv2D: 128 filters, 3×3, padding='same'
-    BatchNorm + ReLU
-    ↓
-Residual Tower (10 blocks)
-    Each block:
-    - Conv2D: 128 filters, 3×3, use_bias=False
-    - BatchNorm + ReLU
-    - Conv2D: 128 filters, 3×3, use_bias=False
-    - BatchNorm
-    - Add (skip connection)
-    - ReLU
-    ↓
-Policy Head (Conv 2×1×1 → BN → ReLU → Flatten → Dense 4672 → Softmax)
-Value Head (Conv 1×1×1 → BN → ReLU → Flatten → Dense 256 → ReLU → Dense 1 → Tanh)
-    ↓
-Outputs: {'policy': (batch, 4672), 'value': (batch, 1)}
-```
-
-**Configuration:**
-- 10 residual blocks
-- 128 filters per layer
-- ~3.6M parameters
-- BatchNorm after every Conv2D
-- use_bias=False in Conv layers (BatchNorm makes bias redundant)
-- float32 throughout
-
-**Key Methods:**
-```python
-def __init__(self, num_residual_blocks: int = 10, num_filters: int = 128, learning_rate: float = 0.001)
-def build_model() -> tf.keras.Model
-def predict(board_tensor: np.ndarray) -> tuple[np.ndarray, np.ndarray]  # (policy, value)
-def save_weights(filepath: str) -> None
-def load_weights(filepath: str) -> None
-```
-
-**Critical Implementation Notes:**
-- Handle both single (8,8,14) and batch (batch,8,8,14) inputs in predict()
-- Use training=False for inference (BatchNorm frozen statistics)
-- Policy output must sum to 1.0 (softmax)
-- Value output must be in [-1, 1] (tanh)
+**Summary:** AlphaZero-style network with 10 residual blocks, 128 filters, dual policy/value heads.
 
 ### 3. MCTS Class (Monte Carlo Tree Search)
 
-**Purpose:** Tree search using neural network for evaluation and move priors
+**Purpose:** Tree search using neural network for evaluation and move priors.
 
 **PUCT Formula:**
 ```
@@ -268,18 +213,6 @@ def test_<component>_<scenario>_<expected_behavior>():
 - `endgame_position`: Simple endgame
 - `checkmate_position`: Known checkmate
 - `stalemate_position`: Known stalemate
-
----
-
-## Dependencies
-
-```
-numpy>=1.24.0
-python-chess>=1.999
-tensorflow>=2.15.0
-tensorflow-metal>=1.1.0
-pytest>=7.4.0
-```
 
 ---
 
