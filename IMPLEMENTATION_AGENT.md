@@ -229,11 +229,15 @@ def get_canonical_board(self) -> np.ndarray:
     of player to move. If black to move, board is flipped.
 
     Returns:
-        Array of shape (8, 8, 14) with dtype float32.
+        Array of shape (8, 8, 18) with dtype float32.
         - Planes 0-5: Current player's pieces (P, N, B, R, Q, K)
         - Planes 6-11: Opponent's pieces (P, N, B, R, Q, K)
         - Plane 12: Repetition count
         - Plane 13: En passant square
+        - Plane 14: Current player kingside castling rights
+        - Plane 15: Current player queenside castling rights
+        - Plane 16: Opponent kingside castling rights
+        - Plane 17: Opponent queenside castling rights
     """
 ```
 
@@ -301,7 +305,7 @@ def test_canonical_board(self) -> None:
 def test_valid_canonical_board_shape(self) -> None:
     game = ChessGame()
     board = game.get_canonical_board()
-    assert board.shape == (8, 8, 14)
+    assert board.shape == (8, 8, 18)
     assert board.dtype == np.float32
 ```
 
@@ -329,7 +333,7 @@ def make_move(self, move: chess.Move) -> None:
 # BAD: Placeholder code
 def get_canonical_board(self):
     # TODO: Implement this properly
-    return np.zeros((8, 8, 14))
+    return np.zeros((8, 8, 18))
 ```
 
 ### ✅ Do: Complete Implementation
@@ -337,7 +341,7 @@ def get_canonical_board(self):
 ```python
 # GOOD: Fully implemented
 def get_canonical_board(self) -> np.ndarray:
-    board_array = np.zeros((8, 8, 14), dtype=np.float32)
+    board_array = np.zeros((8, 8, 18), dtype=np.float32)
     # ... full implementation ...
     return board_array
 ```

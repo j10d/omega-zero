@@ -292,9 +292,9 @@ class TestChessGameNeuralNetworkInterface:
     """Tests for neural network input/output interface."""
     
     def test_valid_canonical_board_shape(self, starting_position: ChessGame) -> None:
-        """Canonical board has correct shape (8, 8, 14)."""
+        """Canonical board has correct shape (8, 8, 18)."""
         board = starting_position.get_canonical_board()
-        assert board.shape == (8, 8, 14)
+        assert board.shape == (8, 8, 18)
     
     def test_valid_canonical_board_dtype(self, starting_position: ChessGame) -> None:
         """Canonical board has float32 dtype."""

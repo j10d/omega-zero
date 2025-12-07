@@ -135,16 +135,20 @@ def make_move(move: chess.Move) -> None
 def undo_move() -> None
 def is_game_over() -> bool
 def get_result() -> float | None  # +1.0, 0.0, -1.0, None
-def get_canonical_board() -> np.ndarray  # Shape (8, 8, 14)
+def get_canonical_board() -> np.ndarray  # Shape (8, 8, 18)
 def get_move_index(move: chess.Move) -> int  # Returns [0, 4671]
 def get_move_from_index(index: int) -> chess.Move
 ```
 
-**Board Representation (14 planes):**
+**Board Representation (18 planes):**
 - Planes 0-5: Current player's pieces (P, N, B, R, Q, K)
 - Planes 6-11: Opponent's pieces (P, N, B, R, Q, K)
 - Plane 12: Repetition count
 - Plane 13: En passant square
+- Plane 14: Current player kingside castling rights
+- Plane 15: Current player queenside castling rights
+- Plane 16: Opponent kingside castling rights
+- Plane 17: Opponent queenside castling rights
 
 **Canonical Form:** Always flip board if black to move (current player's pieces on ranks 1-2)
 
@@ -156,7 +160,7 @@ def get_move_from_index(index: int) -> chess.Move
 
 **Network Structure:**
 ```
-Input: (batch_size, 8, 8, 14)
+Input: (batch_size, 8, 8, 18)
     ↓
 Initial Conv Block
     Conv2D: 128 filters, 3×3, padding='same'
@@ -292,7 +296,7 @@ def make_move(self, move: chess.Move) -> None:
 ### Tensor Validation
 ```python
 def predict(self, board: np.ndarray) -> tuple[np.ndarray, float]:
-    assert board.shape == (8, 8, 14), f"Expected (8,8,14), got {board.shape}"
+    assert board.shape == (8, 8, 18), f"Expected (8,8,18), got {board.shape}"
     # ...
 ```
 
