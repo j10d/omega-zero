@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omega-zero"
+version = "0.1.0"
+description = "Educational AlphaZero-style chess engine"
+authors = [
+    {name = "Ron"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+license = {text = "MIT"}
+
+dependencies = [
+    "numpy>=1.24.0",
+    "python-chess>=1.999",
+    "tensorflow>=2.15.0",
+]
+
+[project.optional-dependencies]
+metal = [
+    "tensorflow-metal>=1.1.0",
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "jupyter>=1.0.0",
+    "jupyterlab>=4.0.0",
+    "ipython>=8.12.0",
+    "matplotlib"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
