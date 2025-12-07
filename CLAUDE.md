@@ -38,6 +38,7 @@ omega-zero/
 ├── REVIEW_AGENT.md              # Review Agent instructions
 ├── BOARD_REPRESENTATION.md      # Board tensor specification
 ├── NEURAL_NETWORK.md            # Neural network specification
+├── MCTS.md                      # MCTS specification
 ├── EXPERIMENTS.md               # Research experiments (separate track)
 ├── src/
 │   ├── chess_game.py           # Game environment & rules engine
@@ -79,6 +80,17 @@ pytest --cov=src                # With coverage
 4. ⏳ Self-Play Engine (self_play.py)
 5. ⏳ Training Pipeline (training.py)
 6. ⏳ Evaluation System (evaluation.py)
+
+## Milestones
+
+**Milestone 1: Minimum Viable Training Loop**
+- Components needed: ChessGame ✅, ChessNN ✅, MCTS ⏳, Self-Play ⏳
+- Checkpoint: Once self-play can generate games and train the network
+- Action: Run leaf parallelization benchmark
+  - Measure: simulations/second, games/hour with simple MCTS
+  - Estimate theoretical speedup from batched leaf evaluation
+  - Decide if parallelization complexity is justified for M1 hardware
+  - Document findings in EXPERIMENTS.md
 
 ## Development Approach
 
@@ -151,18 +163,9 @@ See [NEURAL_NETWORK.md](NEURAL_NETWORK.md) for full specification.
 
 ### 3. MCTS Class (Monte Carlo Tree Search)
 
-**Purpose:** Tree search using neural network for evaluation and move priors.
+See [MCTS.md](MCTS.md) for full specification.
 
-**PUCT Formula:**
-```
-PUCT(node) = Q(node) + c_puct * P(node) * sqrt(N_parent) / (1 + N(node))
-```
-
-**Key Components:**
-- Visit counts (integers)
-- Action values Q (floats in [-1, 1])
-- Prior probabilities P (from policy head, in [0, 1])
-- c_puct constant (typically ~1.0)
+**Summary:** Tree search using neural network for evaluation and move priors.
 
 ### 4. Training Pipeline
 
