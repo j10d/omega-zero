@@ -29,7 +29,9 @@ dev = [
     "jupyter>=1.0.0",
     "jupyterlab>=4.0.0",
     "ipython>=8.12.0",
-    "matplotlib"
+    "matplotlib",
+    "visualkeras>=0.0.2",
+    "pydot>=1.4.2",
 ]
 
 [tool.setuptools]
