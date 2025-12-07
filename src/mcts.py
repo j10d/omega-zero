@@ -8,8 +8,8 @@ evaluation instead of rollouts, following the AlphaZero algorithm.
 import numpy as np
 import chess
 
-from src.chess_game import ChessGame
-from src.neural_network import ChessNN
+from chess_game import ChessGame
+from neural_network import ChessNN
 
 
 class Node:
