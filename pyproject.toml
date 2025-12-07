@@ -16,12 +16,12 @@ license = {text = "MIT"}
 dependencies = [
     "numpy>=1.24.0",
     "python-chess>=1.999",
-    "tensorflow>=2.15.0",
+    "tensorflow==2.15.0",
 ]
 
 [project.optional-dependencies]
 metal = [
-    "tensorflow-metal>=1.1.0",
+    "tensorflow-metal==1.1.0",
 ]
 dev = [
     "pytest>=7.4.0",
