@@ -90,6 +90,22 @@ Verify:
 
 ---
 
+## Environment Setup
+
+Before running any commands, set up the virtual environment:
+```bash
+python3.10 -m venv venv
+source venv/bin/activate
+pip install -e ".[dev,metal]"
+```
+
+If the venv already exists, just activate it:
+```bash
+source venv/bin/activate
+```
+
+---
+
 ## Review Workflow
 
 ### Step 1: Understand the Context
