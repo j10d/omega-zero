@@ -126,9 +126,9 @@ class TestChessNNModelArchitecture:
     # -------------------------------------------------------------------------
 
     def test_valid_input_shape(self, built_model: ChessNN) -> None:
-        """Model accepts (batch, 8, 8, 14) input."""
+        """Model accepts (batch, 8, 8, 18) input."""
         input_shape = built_model.model.input_shape
-        assert input_shape == (None, 8, 8, 14)
+        assert input_shape == (None, 8, 8, 18)
 
     def test_valid_output_shapes(self, built_model: ChessNN) -> None:
         """Model outputs have correct shapes."""
@@ -620,7 +620,7 @@ class TestChessNNEdgeCases:
 
     def test_edge_zeros_input(self, built_small_model: ChessNN) -> None:
         """Network handles all-zeros input without errors."""
-        zeros = np.zeros((8, 8, 14), dtype=np.float32)
+        zeros = np.zeros((8, 8, 18), dtype=np.float32)
         policy, value = built_small_model.predict(zeros)
         assert not np.any(np.isnan(policy))
         assert not np.isnan(value)
@@ -628,7 +628,7 @@ class TestChessNNEdgeCases:
 
     def test_edge_ones_input(self, built_small_model: ChessNN) -> None:
         """Network handles all-ones input without errors."""
-        ones = np.ones((8, 8, 14), dtype=np.float32)
+        ones = np.ones((8, 8, 18), dtype=np.float32)
         policy, value = built_small_model.predict(ones)
         assert not np.any(np.isnan(policy))
         assert not np.isnan(value)
@@ -636,7 +636,7 @@ class TestChessNNEdgeCases:
 
     def test_edge_random_input(self, built_small_model: ChessNN) -> None:
         """Network handles random input without errors."""
-        random_board = np.random.rand(8, 8, 14).astype(np.float32)
+        random_board = np.random.rand(8, 8, 18).astype(np.float32)
         policy, value = built_small_model.predict(random_board)
         assert not np.any(np.isnan(policy))
         assert not np.isnan(value)

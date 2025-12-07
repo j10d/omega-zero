@@ -47,7 +47,7 @@ class ChessNN:
         Build and compile the Keras model.
 
         Creates the complete AlphaZero architecture:
-        - Input layer (8, 8, 14)
+        - Input layer (8, 8, 18)
         - Initial convolution block
         - Residual tower
         - Policy head → (4672,)
@@ -57,7 +57,7 @@ class ChessNN:
             Compiled Keras model.
         """
         # Input
-        inputs = tf.keras.Input(shape=(8, 8, 14), name='board_input')
+        inputs = tf.keras.Input(shape=(8, 8, 18), name='board_input')
 
         # Initial conv block
         x = tf.keras.layers.Conv2D(
@@ -109,11 +109,11 @@ class ChessNN:
         Predict policy and value for board state(s).
 
         Handles both single boards and batches:
-        - Single: (8, 8, 14) → policy (4672,), value scalar
-        - Batch: (N, 8, 8, 14) → policy (N, 4672), value (N, 1)
+        - Single: (8, 8, 18) → policy (4672,), value scalar
+        - Batch: (N, 8, 8, 18) → policy (N, 4672), value (N, 1)
 
         Args:
-            board_tensor: Board representation(s). Shape (8, 8, 14) or (N, 8, 8, 14).
+            board_tensor: Board representation(s). Shape (8, 8, 18) or (N, 8, 8, 18).
 
         Returns:
             policy: Move probabilities, sum=1.0. Shape (4672,) or (N, 4672).
@@ -127,18 +127,18 @@ class ChessNN:
 
         # Validate input shape
         if board_tensor.ndim == 3:
-            if board_tensor.shape != (8, 8, 14):
+            if board_tensor.shape != (8, 8, 18):
                 raise ValueError(
                     f"Invalid board shape: {board_tensor.shape}. "
-                    f"Expected (8, 8, 14)."
+                    f"Expected (8, 8, 18)."
                 )
             board_tensor = np.expand_dims(board_tensor, axis=0)
             single_input = True
         elif board_tensor.ndim == 4:
-            if board_tensor.shape[1:] != (8, 8, 14):
+            if board_tensor.shape[1:] != (8, 8, 18):
                 raise ValueError(
                     f"Invalid board shape: {board_tensor.shape}. "
-                    f"Expected (batch_size, 8, 8, 14)."
+                    f"Expected (batch_size, 8, 8, 18)."
                 )
             single_input = False
         else:

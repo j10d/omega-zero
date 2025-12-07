@@ -448,9 +448,9 @@ class TestChessGameNeuralNetworkInterface:
     # -------------------------------------------------------------------------
 
     def test_valid_canonical_board_shape(self, starting_position: ChessGame) -> None:
-        """Canonical board has correct shape (8, 8, 14)."""
+        """Canonical board has correct shape (8, 8, 18)."""
         board = starting_position.get_canonical_board()
-        assert board.shape == (8, 8, 14)
+        assert board.shape == (8, 8, 18)
 
     def test_valid_canonical_board_dtype(self, starting_position: ChessGame) -> None:
         """Canonical board has float32 dtype."""
@@ -574,6 +574,95 @@ class TestChessGameNeuralNetworkInterface:
         board = game.get_canonical_board()
         assert np.all(board[:, :, 12] == 1.0)
         assert game.board.can_claim_draw()
+
+    # -------------------------------------------------------------------------
+    # Castling rights plane tests
+    # -------------------------------------------------------------------------
+
+    def test_canonical_castling_all_rights_available(self) -> None:
+        """Starting position has all castling rights (planes 14-17 all 1.0)."""
+        game = ChessGame()
+        board = game.get_canonical_board()
+
+        # White to move: current player = white, opponent = black
+        # Plane 14: current player kingside (white K)
+        # Plane 15: current player queenside (white Q)
+        # Plane 16: opponent kingside (black k)
+        # Plane 17: opponent queenside (black q)
+        assert np.all(board[:, :, 14] == 1.0), "Current player kingside should be available"
+        assert np.all(board[:, :, 15] == 1.0), "Current player queenside should be available"
+        assert np.all(board[:, :, 16] == 1.0), "Opponent kingside should be available"
+        assert np.all(board[:, :, 17] == 1.0), "Opponent queenside should be available"
+
+    def test_canonical_castling_no_rights(self) -> None:
+        """Position with no castling rights has all castling planes as 0.0."""
+        # Position with no castling rights
+        game = ChessGame(fen="r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w - - 0 1")
+        board = game.get_canonical_board()
+
+        assert np.all(board[:, :, 14] == 0.0), "No kingside castling for current player"
+        assert np.all(board[:, :, 15] == 0.0), "No queenside castling for current player"
+        assert np.all(board[:, :, 16] == 0.0), "No kingside castling for opponent"
+        assert np.all(board[:, :, 17] == 0.0), "No queenside castling for opponent"
+
+    def test_canonical_castling_partial_rights(self) -> None:
+        """Position with partial castling rights encodes correctly."""
+        # Only white kingside and black queenside available
+        game = ChessGame(fen="r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w Kq - 0 1")
+        board = game.get_canonical_board()
+
+        # White to move: current = white, opponent = black
+        assert np.all(board[:, :, 14] == 1.0), "White kingside (K) available"
+        assert np.all(board[:, :, 15] == 0.0), "White queenside (Q) not available"
+        assert np.all(board[:, :, 16] == 0.0), "Black kingside (k) not available"
+        assert np.all(board[:, :, 17] == 1.0), "Black queenside (q) available"
+
+    def test_canonical_castling_perspective_flip_black_to_move(self) -> None:
+        """Black to move: castling planes swap current/opponent perspective."""
+        # All castling rights, black to move
+        game = ChessGame(fen="r3k2r/pppppppp/8/8/4P3/8/PPPP1PPP/R3K2R b KQkq - 0 1")
+        board = game.get_canonical_board()
+
+        # Black to move: current = black, opponent = white
+        # Plane 14: current player kingside = black k
+        # Plane 15: current player queenside = black q
+        # Plane 16: opponent kingside = white K
+        # Plane 17: opponent queenside = white Q
+        assert np.all(board[:, :, 14] == 1.0), "Black kingside (current) available"
+        assert np.all(board[:, :, 15] == 1.0), "Black queenside (current) available"
+        assert np.all(board[:, :, 16] == 1.0), "White kingside (opponent) available"
+        assert np.all(board[:, :, 17] == 1.0), "White queenside (opponent) available"
+
+    def test_canonical_castling_perspective_flip_partial_rights(self) -> None:
+        """Black to move with partial rights: verify perspective swap."""
+        # White has K only, black has q only, black to move
+        game = ChessGame(fen="r3k2r/pppppppp/8/8/4P3/8/PPPP1PPP/R3K2R b Kq - 0 1")
+        board = game.get_canonical_board()
+
+        # Black to move: current = black, opponent = white
+        assert np.all(board[:, :, 14] == 0.0), "Black kingside (k) not available"
+        assert np.all(board[:, :, 15] == 1.0), "Black queenside (q) available"
+        assert np.all(board[:, :, 16] == 1.0), "White kingside (K) available"
+        assert np.all(board[:, :, 17] == 0.0), "White queenside (Q) not available"
+
+    def test_canonical_castling_rights_lost_after_move(self, castling_position: ChessGame) -> None:
+        """Castling rights update correctly after king moves."""
+        # Initial state - all rights available
+        board_before = castling_position.get_canonical_board()
+        assert np.all(board_before[:, :, 14] == 1.0)
+        assert np.all(board_before[:, :, 15] == 1.0)
+
+        # Move white king - loses both white castling rights
+        castling_position.make_move(chess.Move.from_uci("e1f1"))
+        board_after = castling_position.get_canonical_board()
+
+        # Now black to move: current = black, opponent = white
+        # White (opponent) should have lost both castling rights
+        assert np.all(board_after[:, :, 16] == 0.0), "White kingside lost"
+        assert np.all(board_after[:, :, 17] == 0.0), "White queenside lost"
+        # Black (current) should still have both
+        assert np.all(board_after[:, :, 14] == 1.0), "Black kingside still available"
+        assert np.all(board_after[:, :, 15] == 1.0), "Black queenside still available"
 
     # -------------------------------------------------------------------------
     # Error handling tests

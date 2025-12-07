@@ -198,13 +198,17 @@ class ChessGame:
         instead of "white vs black", reducing what it needs to learn.
 
         Returns:
-            Array of shape (8, 8, 14) with dtype float32.
+            Array of shape (8, 8, 18) with dtype float32.
             - Planes 0-5: Current player's pieces (P, N, B, R, Q, K)
             - Planes 6-11: Opponent's pieces (P, N, B, R, Q, K)
             - Plane 12: Repetition count (normalized)
             - Plane 13: En passant square
+            - Plane 14: Current player kingside castling
+            - Plane 15: Current player queenside castling
+            - Plane 16: Opponent kingside castling
+            - Plane 17: Opponent queenside castling
         """
-        board_array = np.zeros((8, 8, 14), dtype=np.float32)
+        board_array = np.zeros((8, 8, 18), dtype=np.float32)
 
         # Determine if we need to flip (black to move)
         flip = self.board.turn == chess.BLACK
@@ -275,6 +279,34 @@ class ChessGame:
                 ep_array_rank = 7 - ep_array_rank
 
             board_array[ep_array_rank, ep_file, 13] = 1.0
+
+        # Planes 14-17: Castling rights (binary planes)
+        # Uses canonical perspective: current player vs opponent
+        current_color = self.board.turn
+        opponent_color = not current_color
+
+        if current_color == chess.WHITE:
+            # White to move: current = white, opponent = black
+            current_kingside = self.board.has_kingside_castling_rights(chess.WHITE)
+            current_queenside = self.board.has_queenside_castling_rights(chess.WHITE)
+            opponent_kingside = self.board.has_kingside_castling_rights(chess.BLACK)
+            opponent_queenside = self.board.has_queenside_castling_rights(chess.BLACK)
+        else:
+            # Black to move: current = black, opponent = white
+            current_kingside = self.board.has_kingside_castling_rights(chess.BLACK)
+            current_queenside = self.board.has_queenside_castling_rights(chess.BLACK)
+            opponent_kingside = self.board.has_kingside_castling_rights(chess.WHITE)
+            opponent_queenside = self.board.has_queenside_castling_rights(chess.WHITE)
+
+        # Fill entire planes with 1.0 if right is available, 0.0 otherwise
+        if current_kingside:
+            board_array[:, :, 14] = 1.0
+        if current_queenside:
+            board_array[:, :, 15] = 1.0
+        if opponent_kingside:
+            board_array[:, :, 16] = 1.0
+        if opponent_queenside:
+            board_array[:, :, 17] = 1.0
 
         return board_array
 
