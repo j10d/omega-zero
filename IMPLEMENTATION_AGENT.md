@@ -201,6 +201,22 @@ Repeat until component is complete:
 
 -----
 
+## Environment Setup
+
+Before running any commands, set up the virtual environment:
+```bash
+python3.10 -m venv venv
+source venv/bin/activate
+pip install -e ".[dev,metal]"
+```
+
+If the venv already exists, just activate it:
+```bash
+source venv/bin/activate
+```
+
+-----
+
 ## Code Quality Standards
 
 ### Type Hints (Python 3.10+)
