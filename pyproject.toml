@@ -33,6 +33,11 @@ dev = [
     "visualkeras>=0.0.2",
     "pydot>=1.4.2",
 ]
+data = [
+    "zstandard",
+    "requests",
+    "tqdm",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
