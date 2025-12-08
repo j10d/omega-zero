@@ -440,16 +440,10 @@ Missing Tests:
 
 ## Git Workflow
 
-### Identity
-```bash
-git config user.name "Review Agent"
-git config user.email "noreply@anthropic.com"
-```
-
 ### Committing Reviews
 ```bash
 # Commit message format:
-Fix [bug description] and add [test description]
+[Review Agent] Fix [bug description] and add [test description]
 
 [Detailed explanation of bugs found and fixed]
 
@@ -457,7 +451,7 @@ Fix [bug description] and add [test description]
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: Claude 
 ```
 
 ---
