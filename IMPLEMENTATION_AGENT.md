@@ -367,10 +367,9 @@ def get_canonical_board(self) -> np.ndarray:
 ## Git Workflow
 
 ### Commit Messages
-
 ```bash
 git commit -m "$(cat <<'EOF'
-Implement [component name]
+[Implementation Agent] Implement [component name]
 
 - Added comprehensive test suite with [N] tests
 - Implemented all required functionality
@@ -383,7 +382,7 @@ Test classes:
 - TestXxxEdgeCases (N tests)
 
 🤖 Generated with Claude Code (https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: Claude 
 EOF
 )"
 ```
