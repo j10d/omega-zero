@@ -39,11 +39,14 @@ omega-zero/
 ├── BOARD_REPRESENTATION.md      # Board tensor specification
 ├── NEURAL_NETWORK.md            # Neural network specification
 ├── MCTS.md                      # MCTS specification
+├── DATA_PREPARATION.md          # Data preparation specification
+├── TRAINING_PIPELINE.md         # Training pipeline specification
 ├── EXPERIMENTS.md               # Research experiments (separate track)
 ├── src/
 │   ├── chess_game.py           # Game environment & rules engine
 │   ├── neural_network.py       # Policy + value network
 │   ├── mcts.py                 # Monte Carlo Tree Search
+│   ├── data_preparation.py     # Data download and processing
 │   ├── training.py             # Training pipeline
 │   ├── self_play.py            # Self-play game generation
 │   └── evaluation.py           # Model evaluation & arena
@@ -53,7 +56,8 @@ omega-zero/
 │   ├── test_mcts.py
 │   └── test_integration.py
 └── data/
-    └── self_play_games/
+    ├── raw/                    # Downloaded PGN files
+    └── processed/              # Processed training data
 ```
 
 ## Development Commands
@@ -77,15 +81,16 @@ pytest --cov=src                # With coverage
 1. ✅ Game Environment (chess_game.py) - Complete
 2. ✅ Neural Network (neural_network.py) - Complete
 3. ✅ MCTS (mcts.py) - Complete
-4. ⏳ Training Pipeline (training.py)
-5. ⏳ Self-Play Engine (self_play.py)
-6. ⏳ Evaluation System (evaluation.py)
+4. ⏳ Data Preparation (data_preparation.py)
+5. ⏳ Training Pipeline (training.py)
+6. ⏳ Self-Play Engine (self_play.py)
+7. ⏳ Evaluation System (evaluation.py)
 
 ## Milestones
 
 **Milestone 1: Supervised Pre-training**
-- Components needed: ChessGame ✅, ChessNN ✅, Training Pipeline ⏳
-- Checkpoint: Train on GM games from Lichess Elite Database
+- Components needed: ChessGame ✅, ChessNN ✅, Data Preparation ⏳, Training Pipeline ⏳
+- Checkpoint: Train on balanced positions from Lichess database
 - Expected result: ~1500-1700 ELO baseline model
 
 **Milestone 2: Minimum Viable Self-Play Loop**
@@ -172,29 +177,30 @@ See [MCTS.md](MCTS.md) for full specification.
 
 **Summary:** Tree search using neural network for evaluation and move priors.
 
-### 4. Training Pipeline
+### 4. Data Preparation
+
+See [DATA_PREPARATION.md](DATA_PREPARATION.md) for full specification.
+
+**Summary:** Download and process Lichess games with pre-computed Stockfish evaluations. Filter for balanced positions (±200 centipawns) to get high-quality training data.
+
+### 5. Training Pipeline
 
 See [TRAINING_PIPELINE.md](TRAINING_PIPELINE.md) for full specification.
 
 **Phase 1: Supervised Pre-training**
-- Data: Lichess Elite Database (GM games, 2200+ rated)
-- Policy targets: One-hot encoding of GM moves
-- Value targets: Stockfish centipawn evaluations converted to [-1, 1]
-- Training: 10-20 epochs on ~100M positions
+- Data: Balanced positions from Lichess (with embedded Stockfish evals)
+- Policy targets: One-hot encoding of the move played
+- Value targets: Stockfish centipawn evaluation converted to [-1, 1]
 - Expected result: ~1500-1700 ELO
 
 **Stockfish Value Conversion:**
 ```python
-def cp_to_value(cp: float, k: float) -> float:
+def cp_to_value(cp: float, k: float = 400.0) -> float:
     """Convert centipawn to value in [-1, 1]."""
     if cp > 10000: return 1.0    # Mate
     if cp < -10000: return -1.0  # Mated
     return np.tanh(cp / k)
 ```
-
-**k Schedule:**
-- Days 1-2: k=500
-- Day 3+: k=400
 
 **Phase 2: Self-Play Refinement**
 - Generate games using MCTS + current network
@@ -265,14 +271,11 @@ def explore(self, game: ChessGame) -> ChessGame:
 
 ## Data Sources
 
-**GM Games:**
-- Lichess Elite Database: https://database.lichess.org/
-- Format: PGN
-- Parsing: Use `chess.pgn.read_game()`
-
-**Position Evaluation:**
-- Stockfish depth 15-20
-- Convert centipawns to value targets using k parameter
+**Training Data:**
+- Lichess Database: https://database.lichess.org/
+- Format: PGN with embedded Stockfish evaluations
+- Filter: Balanced positions (±200 cp), skip first 8 moves
+- Parsing: Use `chess.pgn.read_game()` with streaming decompression
 
 ---
 
