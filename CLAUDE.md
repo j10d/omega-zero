@@ -44,8 +44,8 @@ omega-zero/
 │   ├── chess_game.py           # Game environment & rules engine
 │   ├── neural_network.py       # Policy + value network
 │   ├── mcts.py                 # Monte Carlo Tree Search
-│   ├── self_play.py            # Self-play game generation
 │   ├── training.py             # Training pipeline
+│   ├── self_play.py            # Self-play game generation
 │   └── evaluation.py           # Model evaluation & arena
 ├── tests/
 │   ├── test_chess_game.py
@@ -77,14 +77,19 @@ pytest --cov=src                # With coverage
 1. ✅ Game Environment (chess_game.py) - Complete
 2. ✅ Neural Network (neural_network.py) - Complete
 3. ✅ MCTS (mcts.py) - Complete
-4. ⏳ Self-Play Engine (self_play.py)
-5. ⏳ Training Pipeline (training.py)
+4. ⏳ Training Pipeline (training.py)
+5. ⏳ Self-Play Engine (self_play.py)
 6. ⏳ Evaluation System (evaluation.py)
 
 ## Milestones
 
-**Milestone 1: Minimum Viable Training Loop**
-- Components needed: ChessGame ✅, ChessNN ✅, MCTS ✅, Self-Play ⏳
+**Milestone 1: Supervised Pre-training**
+- Components needed: ChessGame ✅, ChessNN ✅, Training Pipeline ⏳
+- Checkpoint: Train on GM games from Lichess Elite Database
+- Expected result: ~1500-1700 ELO baseline model
+
+**Milestone 2: Minimum Viable Self-Play Loop**
+- Components needed: ChessGame ✅, ChessNN ✅, MCTS ✅, Training Pipeline ⏳, Self-Play ⏳
 - Checkpoint: Once self-play can generate games and train the network
 - Action: Run leaf parallelization benchmark
   - Measure: simulations/second, games/hour with simple MCTS
@@ -168,6 +173,8 @@ See [MCTS.md](MCTS.md) for full specification.
 **Summary:** Tree search using neural network for evaluation and move priors.
 
 ### 4. Training Pipeline
+
+See [TRAINING_PIPELINE.md](TRAINING_PIPELINE.md) for full specification.
 
 **Phase 1: Supervised Pre-training**
 - Data: Lichess Elite Database (GM games, 2200+ rated)
