@@ -36,6 +36,7 @@ omega-zero/
 ├── CLAUDE.md                    # This file
 ├── IMPLEMENTATION_AGENT.md      # Implementation Agent instructions
 ├── REVIEW_AGENT.md              # Review Agent instructions
+├── TEST_GUIDELINES.md           # Test naming and organization conventions
 ├── EXPERIMENTS.md               # Research experiments (separate track)
 ├── specs/
 │   ├── BOARD_REPRESENTATION.md  # Board tensor specification
@@ -211,6 +212,8 @@ def cp_to_value(cp: float, k: float = 400.0) -> float:
 ---
 
 ## Testing Strategy
+
+See [TEST_GUIDELINES.md](TEST_GUIDELINES.md) for detailed test naming conventions and organization.
 
 ### Test Categories
 - Unit tests: Each component isolated
