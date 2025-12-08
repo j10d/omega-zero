@@ -41,6 +41,63 @@ Train on self-generated games to improve beyond imitation.
 - Policy: MCTS visit count distribution (improved over raw network)
 - Value: Actual game outcome (+1, -1, 0)
 
+## Storage Format
+
+### Compact Storage (Store on Disk)
+
+Positions are stored compactly to minimize disk usage. For 5M positions:
+- Pre-computed tensors: ~115 GB (too large)
+- Compact format: ~350-450 MB (manageable)
+
+```python
+@dataclass
+class StoredExample:
+    fen: str           # Position as FEN (~60 bytes)
+    move_index: int    # Policy target as single index (4 bytes)
+    value: float       # Value target in [-1, 1] (4 bytes)
+```
+
+**For self-play data**, policy is a distribution, not a single move:
+
+```python
+@dataclass
+class StoredSelfPlayExample:
+    fen: str                    # Position as FEN
+    policy: dict[int, float]    # Sparse: {move_index: probability}
+    value: float                # Game outcome
+```
+
+### Expanded Format (At Training Time)
+
+Convert to tensors when loading batches:
+
+```python
+@dataclass
+class TrainingExample:
+    position: np.ndarray      # (8, 8, 18) canonical board
+    policy_target: np.ndarray # (4672,) one-hot or distribution
+    value_target: float       # [-1, 1]
+```
+
+**Expansion at batch load time:**
+
+```python
+def expand_batch(stored_examples: list[StoredExample]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Convert compact storage to training tensors."""
+    n = len(stored_examples)
+    positions = np.zeros((n, 8, 8, 18), dtype=np.float32)
+    policies = np.zeros((n, 4672), dtype=np.float32)
+    values = np.zeros(n, dtype=np.float32)
+    
+    for i, ex in enumerate(stored_examples):
+        game = ChessGame(fen=ex.fen)
+        positions[i] = game.get_canonical_board()
+        policies[i, ex.move_index] = 1.0
+        values[i] = ex.value
+    
+    return positions, policies, values
+```
+
 ## Data Processing
 
 ### PGN Parsing
@@ -53,9 +110,9 @@ def parse_pgn(
     min_rating: int = 2400,
     time_controls: list[str] | None = None,
     min_game_length: int = 20
-) -> Iterator[tuple[ChessGame, chess.Move]]:
+) -> Iterator[tuple[str, chess.Move]]:
     """
-    Yield (position, move_played) pairs from a PGN file.
+    Yield (fen, move_played) pairs from a PGN file.
     
     Args:
         pgn_path: Path to PGN file
@@ -64,7 +121,7 @@ def parse_pgn(
         min_game_length: Skip games shorter than this many moves
     
     Yields:
-        game: ChessGame at position before the move
+        fen: Position as FEN string
         move: The move that was played
     """
 ```
@@ -101,44 +158,40 @@ def cp_to_value(cp: float, k: float = 400.0) -> float:
 
 ### Training Example Creation
 
-```python
-@dataclass
-class TrainingExample:
-    position: np.ndarray      # (8, 8, 18) canonical board
-    policy_target: np.ndarray # (4672,) one-hot or distribution
-    value_target: float       # [-1, 1]
-```
-
 **From master game:**
 ```python
-game = ChessGame(fen=position_fen)
-position = game.get_canonical_board()
-policy_target = np.zeros(4672)
-policy_target[game.get_move_index(move_played)] = 1.0
-value_target = cp_to_value(stockfish_eval, k=400)
+fen = board.fen()
+game = ChessGame(fen=fen)
+move_index = game.get_move_index(move_played)
+value = cp_to_value(stockfish_eval, k=400)
 # Flip value sign if black to move (canonical perspective)
 if game.board.turn == chess.BLACK:
-    value_target = -value_target
+    value = -value
+
+stored = StoredExample(fen=fen, move_index=move_index, value=value)
 ```
 
 **From self-play:**
 ```python
-position = game.get_canonical_board()
-policy_target = mcts_policy  # Already normalized visit counts
-value_target = game_outcome  # +1, -1, or 0
+fen = game.get_state()
+# mcts_policy is sparse dict from MCTS get_policy()
+policy = {idx: prob for idx, prob in enumerate(mcts_policy) if prob > 0}
+value = game_outcome  # +1, -1, or 0
+
+stored = StoredSelfPlayExample(fen=fen, policy=policy, value=value)
 ```
 
 ## Data Loading
 
 ### TrainingDataset Class
 
-Handles loading and batching of training data.
+Handles loading and batching of training data with on-the-fly expansion.
 
 ```python
 class TrainingDataset:
     def __init__(
         self,
-        examples: list[TrainingExample] | None = None,
+        examples: list[StoredExample] | None = None,
         shuffle: bool = True,
         seed: int | None = None
     )
@@ -177,10 +230,11 @@ class TrainingDataset:
 
 ### Memory Considerations
 
-M1 Air has 8GB unified memory. For large datasets:
+M1 Air has 8GB unified memory. Storage strategy:
+- Store compactly on disk (FEN + move_index + value)
+- Expand to tensors only at batch load time
 - Process PGN files in chunks
-- Save processed examples to disk (numpy `.npz` format)
-- Load batches on demand during training
+- 5M positions ≈ 350-450 MB on disk (very manageable)
 
 ## Trainer Class
 
@@ -214,7 +268,7 @@ class Trainer:
 ```
 for epoch in range(epochs):
     for batch in dataset.get_batches(batch_size):
-        positions, policy_targets, value_targets = batch
+        positions, policy_targets, value_targets = batch  # Expanded on-the-fly
         loss = neural_network.train(positions, policy_targets, value_targets)
     
     # Validation
@@ -251,7 +305,7 @@ for epoch in range(epochs):
 class TrainingDataset:
     def __init__(
         self,
-        examples: list[TrainingExample] | None = None,
+        examples: list[StoredExample] | None = None,
         shuffle: bool = True,
         seed: int | None = None
     )
@@ -324,28 +378,34 @@ def parse_pgn(
     min_rating: int = 2400,
     time_controls: list[str] | None = None,
     min_game_length: int = 20
-) -> Iterator[tuple[ChessGame, chess.Move]]
-    """Yield (position, move) pairs from PGN file."""
+) -> Iterator[tuple[str, chess.Move]]
+    """Yield (fen, move) pairs from PGN file."""
 ```
 
 ## File Formats
 
-### Processed Dataset (.npz)
+### Processed Dataset (.json or .jsonl)
 
+Compact storage using JSON Lines format (one example per line):
+
+```json
+{"fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", "move_index": 847, "value": 0.12}
+{"fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2", "move_index": 1234, "value": 0.08}
+```
+
+**Load/Save:**
 ```python
 # Save
-np.savez(
-    filepath,
-    positions=positions_array,      # (N, 8, 8, 18)
-    policy_targets=policy_array,    # (N, 4672)
-    value_targets=value_array       # (N,)
-)
+with open(filepath, 'w') as f:
+    for ex in examples:
+        f.write(json.dumps({"fen": ex.fen, "move_index": ex.move_index, "value": ex.value}) + "\n")
 
 # Load
-data = np.load(filepath)
-positions = data['positions']
-policy_targets = data['policy_targets']
-value_targets = data['value_targets']
+examples = []
+with open(filepath, 'r') as f:
+    for line in f:
+        data = json.loads(line)
+        examples.append(StoredExample(**data))
 ```
 
 ### Checkpoint Directory Structure
@@ -383,6 +443,7 @@ checkpoints/
 - Shuffle training data each epoch for better convergence
 - Monitor GPU memory with `tf.config.experimental.get_memory_info`
 - Filter PGN games by time control header (e.g., `[TimeControl "600+0"]`)
+- FEN-to-tensor expansion happens at batch load time, not storage time
 
 ## Usage Example
 
@@ -406,8 +467,11 @@ dataset = TrainingDataset.from_pgn(
     max_positions=100000
 )
 
-# Save processed dataset for reuse
-dataset.save("data/processed/master_100k.npz")
+# Save processed dataset for reuse (compact format)
+dataset.save("data/processed/master_100k.jsonl")
+
+# Later: load pre-processed dataset
+dataset = TrainingDataset.load("data/processed/master_100k.jsonl")
 
 # Train
 trainer = Trainer(neural_network=nn, checkpoint_dir="checkpoints")
