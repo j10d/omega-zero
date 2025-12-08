@@ -36,12 +36,13 @@ omega-zero/
 ├── CLAUDE.md                    # This file
 ├── IMPLEMENTATION_AGENT.md      # Implementation Agent instructions
 ├── REVIEW_AGENT.md              # Review Agent instructions
-├── BOARD_REPRESENTATION.md      # Board tensor specification
-├── NEURAL_NETWORK.md            # Neural network specification
-├── MCTS.md                      # MCTS specification
-├── DATA_PREPARATION.md          # Data preparation specification
-├── TRAINING_PIPELINE.md         # Training pipeline specification
 ├── EXPERIMENTS.md               # Research experiments (separate track)
+├── specs/
+│   ├── BOARD_REPRESENTATION.md  # Board tensor specification
+│   ├── NEURAL_NETWORK.md        # Neural network specification
+│   ├── MCTS.md                  # MCTS specification
+│   ├── DATA_PREPARATION.md      # Data preparation specification
+│   └── TRAINING_PIPELINE.md     # Training pipeline specification
 ├── src/
 │   ├── chess_game.py           # Game environment & rules engine
 │   ├── neural_network.py       # Policy + value network
@@ -145,7 +146,7 @@ def old_style(self) -> Optional[List[chess.Move]]: pass  # Don't use
 
 ### 1. ChessGame Class (Game Environment)
 
-See [BOARD_REPRESENTATION.md](BOARD_REPRESENTATION.md) for board tensor specification.
+See [specs/BOARD_REPRESENTATION.md](specs/BOARD_REPRESENTATION.md) for board tensor specification.
 
 **Purpose:** Wrapper around python-chess providing AlphaZero-specific interfaces.
 
@@ -167,25 +168,25 @@ def get_move_from_index(index: int) -> chess.Move
 
 ### 2. ChessNN Class (Neural Network)
 
-See [NEURAL_NETWORK.md](NEURAL_NETWORK.md) for full specification.
+See [specs/NEURAL_NETWORK.md](specs/NEURAL_NETWORK.md) for full specification.
 
 **Summary:** AlphaZero-style network with 10 residual blocks, 128 filters, dual policy/value heads.
 
 ### 3. MCTS Class (Monte Carlo Tree Search)
 
-See [MCTS.md](MCTS.md) for full specification.
+See [specs/MCTS.md](specs/MCTS.md) for full specification.
 
 **Summary:** Tree search using neural network for evaluation and move priors.
 
 ### 4. Data Preparation
 
-See [DATA_PREPARATION.md](DATA_PREPARATION.md) for full specification.
+See [specs/DATA_PREPARATION.md](specs/DATA_PREPARATION.md) for full specification.
 
 **Summary:** Download and process Lichess games with pre-computed Stockfish evaluations. Filter for balanced positions (±200 centipawns) to get high-quality training data.
 
 ### 5. Training Pipeline
 
-See [TRAINING_PIPELINE.md](TRAINING_PIPELINE.md) for full specification.
+See [specs/TRAINING_PIPELINE.md](specs/TRAINING_PIPELINE.md) for full specification.
 
 **Phase 1: Supervised Pre-training**
 - Data: Balanced positions from Lichess (with embedded Stockfish evals)
