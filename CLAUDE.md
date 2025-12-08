@@ -56,6 +56,7 @@ omega-zero/
 │   ├── test_chess_game.py
 │   ├── test_neural_network.py
 │   ├── test_mcts.py
+│   ├── test_data_preparation.py
 │   └── test_integration.py
 └── data/
     ├── raw/                    # Downloaded PGN files
@@ -83,7 +84,7 @@ pytest --cov=src                # With coverage
 1. ✅ Game Environment (chess_game.py) - Complete
 2. ✅ Neural Network (neural_network.py) - Complete
 3. ✅ MCTS (mcts.py) - Complete
-4. ⏳ Data Preparation (data_preparation.py)
+4. ✅ Data Preparation (data_preparation.py) - Complete
 5. ⏳ Training Pipeline (training.py)
 6. ⏳ Self-Play Engine (self_play.py)
 7. ⏳ Evaluation System (evaluation.py)
@@ -91,7 +92,7 @@ pytest --cov=src                # With coverage
 ## Milestones
 
 **Milestone 1: Supervised Pre-training**
-- Components needed: ChessGame ✅, ChessNN ✅, Data Preparation ⏳, Training Pipeline ⏳
+- Components needed: ChessGame ✅, ChessNN ✅, Data Preparation ✅, Training Pipeline ⏳
 - Checkpoint: Train on balanced positions from Lichess database
 - Expected result: ~1500-1700 ELO baseline model
 

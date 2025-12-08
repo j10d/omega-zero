@@ -247,6 +247,79 @@ class TestDataFilterFilterPosition:
         assert df.filter_position(eval_cp=None, ply=20, game_length=30) is True
 
 
+class TestDataFilterFilterGame:
+    """Tests for DataFilter.filter_game() method."""
+
+    def test_valid_game_with_evals_passes(self, sample_pgn_content: str) -> None:
+        """Game with evaluations passes filter when game length matches."""
+        # sample_pgn_content has 10 moves (20 ply), so use min_game_length=10
+        df = DataFilter(min_game_length=10)
+        pgn_io = io.StringIO(sample_pgn_content)
+        game = chess.pgn.read_game(pgn_io)
+        assert df.filter_game(game) is True
+
+    def test_valid_long_game_passes(self) -> None:
+        """Long game with evals passes."""
+        # Create a game with 21+ moves and evals
+        pgn_str = """[Event "Test"]
+[Result "1-0"]
+
+1. e4 { [%eval 0.3] } 1... e5 { [%eval 0.28] } 2. Nf3 { [%eval 0.35] } 2... Nc6 { [%eval 0.32] }
+3. Bb5 { [%eval 0.4] } 3... a6 { [%eval 0.38] } 4. Ba4 { [%eval 0.35] } 4... Nf6 { [%eval 0.3] }
+5. O-O { [%eval 0.32] } 5... Be7 { [%eval 0.28] } 6. Re1 { [%eval 0.3] } 6... b5 { [%eval 0.35] }
+7. Bb3 { [%eval 0.32] } 7... O-O { [%eval 0.3] } 8. c3 { [%eval 0.28] } 8... d6 { [%eval 0.3] }
+9. h3 { [%eval 0.25] } 9... Na5 { [%eval 0.28] } 10. Bc2 { [%eval 0.3] } 10... c5 { [%eval 0.32] }
+11. d4 { [%eval 0.35] } 11... Qc7 { [%eval 0.3] } 12. Nbd2 { [%eval 0.28] } 12... Bd7 { [%eval 0.25] }
+13. Nf1 { [%eval 0.28] } 13... Rfe8 { [%eval 0.25] } 14. Ne3 { [%eval 0.28] } 14... g6 { [%eval 0.25] }
+15. Nh2 { [%eval 0.3] } 15... Bf8 { [%eval 0.28] } 16. Qf3 { [%eval 0.3] } 16... Bg7 { [%eval 0.28] }
+17. Nhg4 { [%eval 0.32] } 17... Nxg4 { [%eval 0.3] } 18. Qxg4 { [%eval 0.32] } 18... Nc6 { [%eval 0.3] }
+19. Qf3 { [%eval 0.28] } 19... Nd8 { [%eval 0.25] } 20. a4 { [%eval 0.28] } 20... b4 { [%eval 0.25] }
+21. Bd1 { [%eval 0.28] } 1-0
+"""
+        df = DataFilter(min_game_length=20)
+        pgn_io = io.StringIO(pgn_str)
+        game = chess.pgn.read_game(pgn_io)
+        assert df.filter_game(game) is True
+
+    def test_valid_short_game_rejected(self) -> None:
+        """Short game is rejected."""
+        pgn_str = """[Event "Test"]
+[Result "1-0"]
+
+1. e4 { [%eval 0.3] } 1... e5 { [%eval 0.28] } 2. Nf3 { [%eval 0.35] } 1-0
+"""
+        df = DataFilter(min_game_length=20)
+        pgn_io = io.StringIO(pgn_str)
+        game = chess.pgn.read_game(pgn_io)
+        assert df.filter_game(game) is False
+
+    def test_valid_game_without_evals_rejected(self) -> None:
+        """Game without evaluations is rejected when require_eval=True."""
+        pgn_str = """[Event "Test"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O
+8. c3 d6 9. h3 Na5 10. Bc2 c5 11. d4 1-0
+"""
+        df = DataFilter(require_eval=True)
+        pgn_io = io.StringIO(pgn_str)
+        game = chess.pgn.read_game(pgn_io)
+        assert df.filter_game(game) is False
+
+    def test_valid_game_without_evals_passes_when_not_required(self) -> None:
+        """Game without evaluations passes when require_eval=False."""
+        pgn_str = """[Event "Test"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O
+8. c3 d6 9. h3 Na5 10. Bc2 c5 11. d4 1-0
+"""
+        df = DataFilter(require_eval=False, min_game_length=10)
+        pgn_io = io.StringIO(pgn_str)
+        game = chess.pgn.read_game(pgn_io)
+        assert df.filter_game(game) is True
+
+
 class TestDataDownloaderInit:
     """Tests for DataDownloader initialization."""
 
@@ -534,6 +607,75 @@ class TestDatasetBuilderBuild:
             meta = json.load(f)
             assert "num_positions" in meta
             assert "filters" in meta
+
+
+class TestDataExtractorMultipleGames:
+    """Tests for extracting from PGN files with multiple games."""
+
+    def test_valid_extracts_from_multiple_games(self, temp_dir: str) -> None:
+        """Extracts positions from multiple games in one PGN file."""
+        # Two games in one file
+        pgn_content = """[Event "Game 1"]
+[Result "1-0"]
+
+1. e4 { [%eval 0.3] } 1... e5 { [%eval 0.28] } 2. Nf3 { [%eval 0.35] } 2... Nc6 { [%eval 0.32] }
+3. Bb5 { [%eval 0.4] } 3... a6 { [%eval 0.38] } 4. Ba4 { [%eval 0.35] } 4... Nf6 { [%eval 0.3] }
+5. O-O { [%eval 0.32] } 5... Be7 { [%eval 0.28] } 6. Re1 { [%eval 0.3] } 6... b5 { [%eval 0.35] }
+7. Bb3 { [%eval 0.32] } 7... O-O { [%eval 0.3] } 8. c3 { [%eval 0.28] } 8... d6 { [%eval 0.3] }
+9. h3 { [%eval 0.25] } 9... Na5 { [%eval 0.28] } 10. Bc2 { [%eval 0.3] } 10... c5 { [%eval 0.32] }
+11. d4 { [%eval 0.35] } 1-0
+
+[Event "Game 2"]
+[Result "0-1"]
+
+1. d4 { [%eval 0.25] } 1... d5 { [%eval 0.22] } 2. c4 { [%eval 0.28] } 2... e6 { [%eval 0.25] }
+3. Nc3 { [%eval 0.3] } 3... Nf6 { [%eval 0.28] } 4. Bg5 { [%eval 0.32] } 4... Be7 { [%eval 0.3] }
+5. e3 { [%eval 0.28] } 5... O-O { [%eval 0.25] } 6. Nf3 { [%eval 0.28] } 6... Nbd7 { [%eval 0.25] }
+7. Rc1 { [%eval 0.3] } 7... c6 { [%eval 0.28] } 8. Bd3 { [%eval 0.3] } 8... dxc4 { [%eval 0.28] }
+9. Bxc4 { [%eval 0.25] } 9... Nd5 { [%eval 0.22] } 10. Bxe7 { [%eval 0.25] } 10... Qxe7 { [%eval 0.22] }
+11. O-O { [%eval 0.25] } 0-1
+"""
+        pgn_path = os.path.join(temp_dir, "multi_game.pgn")
+        with open(pgn_path, "w") as f:
+            f.write(pgn_content)
+
+        permissive_filter = DataFilter(min_ply=0, min_game_length=1)
+        extractor = DataExtractor(filter=permissive_filter)
+
+        positions = list(extractor.extract_from_pgn(pgn_path, progress=False))
+
+        # Should have positions from both games
+        assert len(positions) > 20  # Both games have ~20 moves each
+
+        # Verify positions are valid FENs
+        for pos in positions:
+            board = chess.Board(pos["fen"])
+            assert board.is_valid()
+
+    def test_valid_counts_positions_across_games(self, temp_dir: str) -> None:
+        """Position count reflects all games."""
+        pgn_content = """[Event "Game 1"]
+[Result "1-0"]
+
+1. e4 { [%eval 0.3] } 1... e5 { [%eval 0.28] } 2. Nf3 { [%eval 0.35] } 1-0
+
+[Event "Game 2"]
+[Result "0-1"]
+
+1. d4 { [%eval 0.25] } 1... d5 { [%eval 0.22] } 2. c4 { [%eval 0.28] } 0-1
+"""
+        pgn_path = os.path.join(temp_dir, "short_games.pgn")
+        with open(pgn_path, "w") as f:
+            f.write(pgn_content)
+
+        # Use very permissive filter to get all positions
+        permissive_filter = DataFilter(min_ply=0, min_game_length=1, require_eval=True)
+        extractor = DataExtractor(filter=permissive_filter)
+
+        positions = list(extractor.extract_from_pgn(pgn_path, progress=False))
+
+        # Game 1: 3 moves, Game 2: 3 moves = 6 positions total
+        assert len(positions) == 6
 
 
 class TestDatasetBuilderMerge:
