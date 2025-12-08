@@ -49,3 +49,4 @@ checkpoints/
 # Project specific
 models/checkpoints/*.h5
 data/self_play_games/*.pgn
+notebooks/data/
